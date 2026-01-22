@@ -41,14 +41,15 @@ test:
 security:
   stage: security
   script:
-    - pip install bandit safety
+    - pip install bandit pip-audit
     - bandit -r . -c .bandit.yml -f json -o bandit-report.json
-    - safety check --json > safety-report.json
+    - pip-audit --format json --output pip-audit-report.json
   artifacts:
     paths:
       - bandit-report.json
-      - safety-report.json
+      - pip-audit-report.json
     expire_in: 1 week
+    when: always
 
 build:
   stage: build
