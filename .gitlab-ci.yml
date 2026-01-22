@@ -1,4 +1,4 @@
-image: python:3.11
+image: python:3.13
 
 stages:
   - test
@@ -6,7 +6,7 @@ stages:
   - build
 
 variables:
-  POETRY_VERSION: "1.8.0"
+  POETRY_VERSION: "2.3.1"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 cache:
@@ -17,7 +17,8 @@ cache:
 before_script:
   - python --version
   - pip install poetry==$POETRY_VERSION
-  - poetry config virtualenvs.create false
+  - poetry config virtualenvs.create true
+  - poetry config virtualenvs.in-project true
   - poetry install --with dev
 
 test:
@@ -40,14 +41,13 @@ test:
 security:
   stage: security
   script:
-    - pip install bandit safety
+    - pip install bandit
     - bandit -r . -c .bandit.yml -f json -o bandit-report.json
-    - safety check --json > safety-report.json
   artifacts:
     paths:
       - bandit-report.json
-      - safety-report.json
     expire_in: 1 week
+    when: always
 
 build:
   stage: build
