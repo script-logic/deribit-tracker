@@ -43,11 +43,9 @@ security:
   script:
     - pip install bandit pip-audit
     - bandit -r . -c .bandit.yml -f json -o bandit-report.json
-    - pip-audit --format json --output pip-audit-report.json
   artifacts:
     paths:
       - bandit-report.json
-      - pip-audit-report.json
     expire_in: 1 week
     when: always
 
