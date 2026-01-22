@@ -19,7 +19,7 @@ before_script:
   - pip install poetry==$POETRY_VERSION
   - poetry config virtualenvs.create true
   - poetry config virtualenvs.in-project true
-  - poetry install --with dev --no-root
+  - poetry install --with dev
 
 test:
   stage: test
