@@ -41,7 +41,7 @@ security:
   stage: security
   script:
     - pip install bandit safety
-    - bandit -r app/ -f json -o bandit-report.json
+    - bandit -r . -c .bandit.yml -f json -o bandit-report.json
     - safety check --json > safety-report.json
   artifacts:
     paths:
