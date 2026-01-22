@@ -11,6 +11,23 @@ __pycache__/
 .pytest_cache/
 .vscode/
 
+# pytest
+.pytest_cache/
+.cache/
+
+# coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+
+# test logs
+pytest.xml
+test-results/
+*.log
+
 # Git
 .git
 .gitignore

@@ -8,6 +8,23 @@ credentials/
 *.p12
 *.pem
 
+# pytest
+.pytest_cache/
+.cache/
+
+# coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+
+# test logs
+pytest.xml
+test-results/
+*.log
+
 # Python
 __pycache__/
 .mypy_cache
