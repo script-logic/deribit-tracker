@@ -41,7 +41,7 @@ test:
 security:
   stage: security
   script:
-    - pip install bandit pip-audit
+    - pip install bandit
     - bandit -r . -c .bandit.yml -f json -o bandit-report.json
   artifacts:
     paths:
