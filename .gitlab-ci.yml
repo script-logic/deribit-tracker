@@ -17,8 +17,9 @@ cache:
 before_script:
   - python --version
   - pip install poetry==$POETRY_VERSION
-  - poetry config virtualenvs.create false
-  - poetry install --with dev
+  - poetry config virtualenvs.create true
+  - poetry config virtualenvs.in-project true
+  - poetry install --with dev --no-root
 
 test:
   stage: test
