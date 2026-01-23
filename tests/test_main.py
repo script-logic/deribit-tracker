@@ -28,17 +28,27 @@ def test_api_metadata():
 
 
 def test_cors_headers():
-    response = client.options(
+    """Test CORS headers are properly configured."""
+    response = client.get(
+        "/",
+        headers={"Origin": "http://127.0.0.1:8000"},
+    )
+
+    assert response.status_code == 200
+    assert "access-control-allow-origin" in response.headers
+
+    response_options = client.options(
         "/",
         headers={
             "Origin": "http://127.0.0.1:8000",
             "Access-Control-Request-Method": "GET",
         },
     )
-    assert response.status_code == 200
-    assert "access-control-allow-origin" in response.headers
+
+    assert response_options.status_code == 200
+    assert "access-control-allow-origin" in response_options.headers
     assert (
-        response.headers["access-control-allow-origin"]
+        response_options.headers["access-control-allow-origin"]
         == "http://127.0.0.1:8000"
     )
 
