@@ -1,6 +1,7 @@
 # Environment
 .env
 .env.local
+.env.*.local
 
 # Credentials
 credentials/
@@ -64,6 +65,7 @@ venv.bak/
 *.swo
 *~
 .ruff_cache
+tree.py
 
 # OS
 .DS_Store
