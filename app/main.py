@@ -2,15 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import (
-    __description__,
-    __title__,
-    __version__,
+    description,
+    title,
+    version,
 )
 
 app = FastAPI(
-    title=__title__,
-    version=__version__,
-    description=__description__,
+    title=title,
+    version=version,
+    description=description,
 )
 
 app.add_middleware(

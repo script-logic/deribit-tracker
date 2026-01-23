@@ -10,6 +10,7 @@ __pycache__/
 .env.*
 .pytest_cache/
 .vscode/
+tree.py
 
 # pytest
 .pytest_cache/
