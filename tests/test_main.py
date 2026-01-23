@@ -24,7 +24,7 @@ def test_api_metadata():
     data = response.json()
     assert "info" in data
     assert "Deribit Tracker" in data["info"]["title"]
-    assert "0.1.0" in data["info"]["version"]
+    assert "0.2.0" in data["info"]["version"]
 
 
 def test_cors_headers():
