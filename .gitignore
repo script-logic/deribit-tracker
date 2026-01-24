@@ -12,6 +12,8 @@ credentials/
 # pytest
 .pytest_cache/
 .cache/
+scan_project.py
+project_scan_output.txt
 
 # coverage
 .coverage

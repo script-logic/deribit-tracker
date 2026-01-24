@@ -5,11 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import (
     description,
-    logger,
-    settings,
     title,
     version,
 )
+from .core import (
+    get_logger,
+    settings,
+)
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -32,7 +36,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors.origins,
     allow_credentials=True,
-    allow_methods=["GET", "OPTIONS"],
+    allow_methods=[
+        "GET",
+        "OPTIONS",
+    ],
     allow_headers=["*"],
 )
 

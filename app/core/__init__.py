@@ -14,6 +14,16 @@ from .logger import (
     get_logger,
 )
 
+logger = get_logger(__name__)
+
+
+try:
+    init_settings()
+    settings = get_settings()
+except Exception as e:
+    logger.error("Failed to initialize settings: %s", e)
+    raise
+
 __all__ = [
     "get_logger",
     "get_settings",

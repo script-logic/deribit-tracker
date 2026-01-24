@@ -13,7 +13,7 @@ def test_package_metadata_loaded():
 
 def test_version_matches_pyproject():
     pkg_metadata = metadata("deribit-tracker").json
-    expected_version = pkg_metadata.get("version", "0.2.0")
+    expected_version = pkg_metadata.get("version", "0.3.0")
     assert version == expected_version
 
 

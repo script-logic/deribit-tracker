@@ -5,27 +5,9 @@ Main application module with metadata, configuration and logger
 initialization.
 """
 
-import sys
 from importlib.metadata import metadata
 
-from .core import (
-    get_logger,
-    get_settings,
-    init_settings,
-)
-
-try:
-    logger = get_logger(__name__)
-except Exception as e:
-    print(f"Failed to initialize logger: {e}", file=sys.stderr)
-    raise
-
-try:
-    init_settings()
-    settings = get_settings()
-except Exception as e:
-    logger.error("Failed to initialize settings: %s", e)
-    raise
+from . import core, database
 
 try:
     pkg_metadata = metadata("deribit-tracker").json
@@ -39,9 +21,9 @@ except Exception:
 
 
 __all__ = [
+    "core",
+    "database",
     "description",
-    "logger",
-    "settings",
     "title",
     "version",
 ]
