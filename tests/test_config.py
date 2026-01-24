@@ -180,7 +180,7 @@ class TestApplicationSettings:
         assert not settings.debug
         assert settings.api_v1_prefix == "/api/v1"
         assert settings.project_name == "Deribit Price Tracker API"
-        assert settings.version == "0.2.0"
+        assert settings.version == "0.3.0"
 
     def test_api_prefix_validation(self):
         """Test API prefix validation and normalization."""

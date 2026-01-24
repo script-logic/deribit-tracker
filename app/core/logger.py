@@ -31,7 +31,7 @@ class AppLogger:
     @classmethod
     def get_logger(
         cls,
-        name: str = __name__,
+        name: str,
     ) -> logging.Logger:
         """
         Get or create application logger instance.

@@ -48,6 +48,8 @@ env/
 .env
 .env.local
 .env.*.local
+scan_project.py
+project_scan_output.txt
 
 # IDEs
 .vscode/

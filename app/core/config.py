@@ -21,7 +21,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from app.core.logger import AppLogger
+from .logger import AppLogger
 
 
 class DatabaseSettings(BaseModel):
@@ -142,7 +142,7 @@ class ApplicationSettings(BaseModel):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     project_name: str = "Deribit Price Tracker API"
-    version: str = "0.2.0"
+    version: str = "0.3.0"
 
     model_config = {"frozen": True}
 
