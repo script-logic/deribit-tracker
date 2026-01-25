@@ -110,3 +110,6 @@ class DatabaseManager:
             True if engine and session factory are initialized.
         """
         return self._engine is not None and self._session_factory is not None
+
+
+database_manager = DatabaseManager()

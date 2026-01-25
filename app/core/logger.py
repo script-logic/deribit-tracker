@@ -23,16 +23,13 @@ class AppLogger:
     """
 
     _initialized: ClassVar[bool] = False
+    _date_format: ClassVar[str] = "%Y-%m-%d %H:%M:%S"
     _log_format: ClassVar[str] = (
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
-    _date_format: ClassVar[str] = "%Y-%m-%d %H:%M:%S"
 
     @classmethod
-    def get_logger(
-        cls,
-        name: str,
-    ) -> logging.Logger:
+    def get_logger(cls, name: str) -> logging.Logger:
         """
         Get or create application logger instance.
 

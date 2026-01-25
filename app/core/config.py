@@ -5,23 +5,12 @@ Uses Pydantic for type-safe configuration with support for nested models,
 environment variable loading, and singleton pattern for global access.
 """
 
-from typing import (
-    Any,
-    ClassVar,
-)
+from typing import Any, ClassVar
 
-from pydantic import (
-    BaseModel,
-    Field,
-    SecretStr,
-    field_validator,
-)
-from pydantic_settings import (
-    BaseSettings,
-    SettingsConfigDict,
-)
+from pydantic import BaseModel, Field, SecretStr, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .logger import AppLogger
+from .logger import AppLogger, get_logger
 
 
 class DatabaseSettings(BaseModel):
@@ -219,26 +208,8 @@ class Settings(BaseSettings):
         frozen=True,
     )
 
-    def __init__(self, **kwargs: Any) -> None:
-        """
-        Private constructor for singleton pattern.
-
-        Args:
-            **kwargs: Configuration values to override environment variables.
-
-        Raises:
-            RuntimeError: If attempting to create multiple instances.
-        """
-        if Settings._instance is not None:
-            raise RuntimeError(
-                "Settings is a singleton class. Use Settings.get_instance() "
-                "instead.",
-            )
-
-        super().__init__(**kwargs)
-
     @classmethod
-    def get_instance(cls, **kwargs: Any) -> "Settings":
+    def init_instance(cls, **kwargs: Any) -> "Settings":
         """
         Get singleton settings instance.
 
@@ -256,7 +227,7 @@ class Settings(BaseSettings):
 
     def _log_initialization(self) -> None:
         """Log settings initialization (excluding sensitive data)."""
-        self._logger = AppLogger.get_logger(__name__)
+        self._logger = get_logger(__name__)
 
         if self.application.debug:
             AppLogger.set_level("DEBUG")
@@ -288,37 +259,14 @@ class Settings(BaseSettings):
             )
 
 
-# Global access functions
-def get_settings() -> Settings:
+def get_settings(**kwargs) -> Settings:
     """
     Get singleton settings instance.
 
     Returns:
         Global Settings instance.
-
-    Raises:
-        RuntimeError: If settings not initialized.
     """
     if Settings._instance is None:
-        raise RuntimeError(
-            "Settings not initialized. Call init_settings() first.",
-        )
+        return Settings.init_instance(**kwargs)
 
     return Settings._instance
-
-
-# Initialize settings on import
-def init_settings(**kwargs: Any) -> Settings:
-    """
-    Initialize application settings explicitly.
-
-    Useful for controlling initialization timing or passing
-    configuration programmatically.
-
-    Args:
-        **kwargs: Configuration values to override environment variables.
-
-    Returns:
-        Initialized Settings instance.
-    """
-    return Settings.get_instance(**kwargs)
