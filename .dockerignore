@@ -11,10 +11,13 @@ __pycache__/
 .pytest_cache/
 .vscode/
 tree.py
+celerybeat-schedule
 
 # pytest
 .pytest_cache/
 .cache/
+start_dev.ps1
+scripts
 
 # coverage
 .coverage

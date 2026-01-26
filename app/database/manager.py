@@ -12,9 +12,11 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core import settings
+from app.core import get_logger, settings
 
 from .base import Base
+
+logger = get_logger(__name__)
 
 
 class DatabaseManager:
@@ -110,3 +112,8 @@ class DatabaseManager:
             True if engine and session factory are initialized.
         """
         return self._engine is not None and self._session_factory is not None
+
+
+database_manager = DatabaseManager()
+database_manager._get_engine()
+database_manager._get_session_factory()

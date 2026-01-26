@@ -1,8 +1,8 @@
-"""Create price_ticks table
+"""create_price_ticks_table
 
-Revision ID: b1494e573776
+Revision ID: 19cfef6b2cba
 Revises:
-Create Date: 2026-01-24 21:27:51.504960
+Create Date: 2026-01-25 21:49:52.138420
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op  # type: ignore
 
 # revision identifiers, used by Alembic.
-revision: str = "b1494e573776"
+revision: str = "19cfef6b2cba"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -37,10 +37,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_price_ticks_ticker"),
-        "price_ticks",
-        ["ticker"],
-        unique=False,
+        op.f("ix_price_ticks_ticker"), "price_ticks", ["ticker"], unique=False
     )
     op.create_index(
         op.f("ix_price_ticks_timestamp"),

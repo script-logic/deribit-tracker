@@ -213,32 +213,3 @@ class PriceRepository:
 
         ticks: Sequence[PriceTick] = result.scalars().all()
         return ticks
-
-    async def delete_old_records(
-        self,
-        older_than_days: int = 30,
-    ) -> int:
-        """
-        Delete old price records to maintain database size.
-
-        Args:
-            older_than_days: Delete records older than this many days.
-
-        Returns:
-            Number of deleted records.
-        """
-        from datetime import timedelta
-
-        cutoff_timestamp = int(
-            (datetime.utcnow() - timedelta(days=older_than_days)).timestamp(),
-        )
-
-        query = select(PriceTick).where(PriceTick.timestamp < cutoff_timestamp)
-
-        result = await self.session.execute(query)
-        records_to_delete = result.scalars().all()
-
-        for record in records_to_delete:
-            await self.session.delete(record)
-
-        return len(records_to_delete)

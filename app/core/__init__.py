@@ -6,19 +6,13 @@ Tracker application, including singleton settings management,
 centralized logging.
 """
 
-from .config import (
-    get_settings,
-    init_settings,
-)
-from .logger import (
-    get_logger,
-)
+from .config import get_settings
+from .logger import get_logger
 
 logger = get_logger(__name__)
 
 
 try:
-    init_settings()
     settings = get_settings()
 except Exception as e:
     logger.error("Failed to initialize settings: %s", e)
@@ -27,5 +21,4 @@ except Exception as e:
 __all__ = [
     "get_logger",
     "get_settings",
-    "init_settings",
 ]

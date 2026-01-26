@@ -1,0 +1,122 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DATABASE__DB:-deribit_tracker}
+      POSTGRES_USER: ${DATABASE__USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE__PASSWORD:-your_secure_password}
+    ports:
+      - "${DATABASE__PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE__USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS__PORT:-6379}:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    env_file:
+      - .env
+
+  app:
+    build: .
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      DATABASE__HOST: postgres
+      DATABASE__PORT: 5432
+      DATABASE__USER: ${DATABASE__USER:-postgres}
+      DATABASE__PASSWORD: ${DATABASE__PASSWORD:-your_secure_password}
+      DATABASE__DB: ${DATABASE__DB:-deribit_tracker}
+      REDIS__HOST: redis
+      REDIS__PORT: 6379
+      APPLICATION__DEBUG: ${APPLICATION__DEBUG:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      sh -c "
+        echo 'Applying migrations...' &&
+        poetry run alembic upgrade head &&
+        poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+    env_file:
+      - .env
+
+  celery_worker:
+    build: .
+    environment:
+      DATABASE__HOST: postgres
+      DATABASE__PORT: 5432
+      DATABASE__USER: ${DATABASE__USER:-postgres}
+      DATABASE__PASSWORD: ${DATABASE__PASSWORD:-your_secure_password}
+      DATABASE__DB: ${DATABASE__DB:-deribit_tracker}
+      REDIS__HOST: redis
+      REDIS__PORT: 6379
+      CELERY__WORKER_CONCURRENCY: ${CELERY__WORKER_CONCURRENCY:-2}
+      CELERY__BEAT_ENABLED: ${CELERY__BEAT_ENABLED:-false}
+      CELERY__TASK_TRACK_STARTED: ${CELERY__TASK_TRACK_STARTED:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      poetry run celery -A app.tasks.celery_app worker
+      --loglevel=info
+      --concurrency=${CELERY__WORKER_CONCURRENCY:-2}
+      --pool=solo
+      --queues=price_collection,celery,default
+    env_file:
+    - .env
+
+  celery_beat:
+    build: .
+    environment:
+      DATABASE__HOST: postgres
+      DATABASE__PORT: 5432
+      DATABASE__USER: ${DATABASE__USER:-postgres}
+      DATABASE__PASSWORD: ${DATABASE__PASSWORD:-your_secure_password}
+      DATABASE__DB: ${DATABASE__DB:-deribit_tracker}
+      REDIS__HOST: redis
+      REDIS__PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      celery_worker:
+        condition: service_started
+    volumes:
+      - .:/app
+    command: >
+      poetry run celery -A app.tasks.celery_app beat
+      --loglevel=info
+      --scheduler=celery.beat:PersistentScheduler
+
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:
+  redis_data:

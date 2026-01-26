@@ -29,19 +29,9 @@ class PriceTick(Base):
 
     __tablename__ = "price_ticks"
 
-    id: Mapped[int] = mapped_column(
-        BigInteger,
-        primary_key=True,
-    )
-    ticker: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        index=True,
-    )
-    price: Mapped[float] = mapped_column(
-        Float,
-        nullable=False,
-    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    ticker: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    price: Mapped[float] = mapped_column(Float, nullable=False)
     timestamp: Mapped[int] = mapped_column(
         BigInteger,
         nullable=False,
