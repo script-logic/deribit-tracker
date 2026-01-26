@@ -117,6 +117,10 @@ class TestApplicationInitialization:
             "version",
             "core",
             "database",
+            "clients",
+            "api",
+            "services",
+            "tasks",
         }
 
         actual_exports = set(app.__all__)

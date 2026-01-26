@@ -19,15 +19,6 @@ from . import celery_app
 logger = get_logger(__name__)
 
 
-def run_async(coroutine):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(coroutine)
-    finally:
-        loop.close()
-
-
 async def collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
     """
     Async function to collect price for single ticker.
