@@ -1,17 +1,13 @@
 """
 Celery tasks for periodic price collection from Deribit.
 
-Tasks run in background to fetch cryptocurrency prices
-and store them in PostgreSQL database.
+Tasks run in background using asyncio pool for efficient
+async execution.
 """
 
 import asyncio
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients import DeribitClient
 from app.core import get_logger
@@ -23,21 +19,18 @@ from . import celery_app
 logger = get_logger(__name__)
 
 
-@asynccontextmanager
-async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Context manager for database session in async tasks.
-
-    Yields:
-        AsyncSession: Database session for repository operations.
-    """
-    async with database_manager.get_session() as session:
-        yield session
+def run_async(coroutine):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coroutine)
+    finally:
+        loop.close()
 
 
-async def _collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
+async def collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
     """
-    Collect price for single ticker and store in database.
+    Async function to collect price for single ticker.
 
     Args:
         ticker: Cryptocurrency ticker symbol.
@@ -45,13 +38,15 @@ async def _collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
     Returns:
         Dictionary with collection result or None if failed.
     """
+    from datetime import UTC, datetime
+
     deribit_client = DeribitClient()
     timestamp = int(datetime.now(UTC).timestamp())
 
     try:
         price = await deribit_client.get_index_price(ticker)
 
-        async with get_db_context() as session:
+        async with database_manager.get_session() as session:
             repository = PriceRepository(session)
             price_tick = await repository.create(ticker, price, timestamp)
             await session.commit()
@@ -87,8 +82,9 @@ async def _collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
     max_retries=3,
     default_retry_delay=30,
     acks_late=True,
+    ignore_result=False,
 )
-def collect_all_prices(self) -> dict[str, Any]:
+def collect_all_prices(self):
     """
     Celery task to collect prices for all supported tickers.
 
@@ -97,51 +93,55 @@ def collect_all_prices(self) -> dict[str, Any]:
     Returns:
         Dictionary with collection results for all tickers.
     """
-    logger.info("Starting price collection task")
-
-    tickers = ["btc_usd", "eth_usd"]
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    logger.debug("Starting price collection task (sync wrapper)")
 
     try:
-        tasks = [_collect_price_for_ticker(ticker) for ticker in tickers]
-        results = loop.run_until_complete(asyncio.gather(*tasks))
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
-        successful = [r for r in results if r and r.get("success")]
-        failed = [r for r in results if r and not r.get("success")]
+    tickers = ["btc_usd", "eth_usd"]
+    tasks = []
 
-        if failed and self.request.retries < self.max_retries:
-            logger.warning(
-                "Some collections failed, retrying (%s/%s)",
-                self.request.retries + 1,
-                self.max_retries,
+    for ticker in tickers:
+        task = loop.create_task(collect_price_for_ticker(ticker))
+        tasks.append((ticker, task))
+
+    results = []
+    for ticker, task in tasks:
+        try:
+            result = loop.run_until_complete(task)
+            results.append(result)
+        except Exception as error:
+            logger.error("Failed to collect %s price: %s", ticker, str(error))
+            results.append(
+                {"ticker": ticker, "error": str(error), "success": False},
             )
-            raise self.retry(countdown=30)
 
-        return {
-            "successful": len(successful),
-            "failed": len(failed),
-            "results": results,
-            "timestamp": int(datetime.now(UTC).timestamp()),
-        }
+    successful = [r for r in results if r and r.get("success")]
+    failed = [r for r in results if r and not r.get("success")]
 
-    except Exception as error:
-        logger.error("Price collection task failed: %s", str(error))
-        if self.request.retries < self.max_retries:
-            raise self.retry(exc=error) from error
-        raise
+    if failed and self.request.retries < self.max_retries:
+        logger.warning("Some collections failed, retrying...")
+        raise self.retry(countdown=30)
 
-    finally:
-        loop.close()
+    return {
+        "successful": len(successful),
+        "failed": len(failed),
+        "results": results,
+        "timestamp": int(datetime.now(UTC).timestamp()),
+    }
 
 
 @celery_app.task(
     name="app.tasks.price_collection.collect_single_price",
     max_retries=2,
+    ignore_result=False,
 )
-def collect_single_price(ticker: str) -> dict[str, Any] | None:
+async def collect_single_price(ticker: str) -> dict[str, Any] | None:
     """
-    Celery task to collect price for single ticker.
+    Async Celery task to collect price for single ticker.
 
     Args:
         ticker: Cryptocurrency ticker symbol.
@@ -155,42 +155,67 @@ def collect_single_price(ticker: str) -> dict[str, Any] | None:
         logger.error("Unsupported ticker: %s", ticker)
         return None
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
     try:
-        result = loop.run_until_complete(_collect_price_for_ticker(ticker))
+        result = await collect_price_for_ticker(ticker)
         return result
 
     except Exception as error:
         logger.error("Failed to collect %s price: %s", ticker, str(error))
-        return None
 
-    finally:
-        loop.close()
+        from datetime import UTC, datetime
+
+        return {
+            "ticker": ticker,
+            "error": str(error),
+            "timestamp": int(datetime.now(UTC).timestamp()),
+            "success": False,
+        }
 
 
-@celery_app.task(name="app.tasks.price_collection.health_check")
-def health_check() -> dict[str, Any]:
+@celery_app.task(
+    name="app.tasks.price_collection.health_check",
+    ignore_result=False,
+)
+async def health_check() -> dict[str, Any]:
     """
-    Health check task for price collection system.
+    Async health check task for price collection system.
 
     Returns:
         Dictionary with system health status.
     """
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    from datetime import UTC, datetime
 
     try:
         deribit_client = DeribitClient()
-        api_healthy = loop.run_until_complete(deribit_client.health_check())
+        api_healthy = await deribit_client.health_check()
 
         db_healthy = database_manager.is_initialized()
 
+        import redis.asyncio as redis
+
+        from app.core import settings
+
+        redis_healthy = False
+        try:
+            redis_client = redis.from_url(
+                settings.redis.url,
+                decode_responses=True,
+            )
+            await redis_client.ping()
+            redis_healthy = True
+            await redis_client.close()
+        except Exception as e:
+            logger.warning("Redis health check failed: %s", e)
+
+        overall_healthy = all([api_healthy, db_healthy, redis_healthy])
+
         return {
-            "status": "healthy" if api_healthy and db_healthy else "unhealthy",
-            "deribit_api": "available" if api_healthy else "unavailable",
-            "database": "initialized" if db_healthy else "not_initialized",
+            "status": "healthy" if overall_healthy else "unhealthy",
+            "components": {
+                "deribit_api": "available" if api_healthy else "unavailable",
+                "database": "initialized" if db_healthy else "not_initialized",
+                "redis": "available" if redis_healthy else "unavailable",
+            },
             "timestamp": int(datetime.now(UTC).timestamp()),
         }
 
@@ -201,6 +226,3 @@ def health_check() -> dict[str, Any]:
             "error": str(error),
             "timestamp": int(datetime.now(UTC).timestamp()),
         }
-
-    finally:
-        loop.close()

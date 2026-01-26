@@ -116,6 +116,7 @@ class CelerySettings(BaseModel):
         worker_concurrency: Number of concurrent worker processes.
         beat_enabled: Enable periodic task scheduling.
         task_track_started: Track when task starts execution.
+        # TODO
     """
 
     worker_concurrency: int = Field(default=2, ge=1, le=10)
@@ -203,6 +204,7 @@ class Settings(BaseSettings):
     database: DatabaseSettings
     deribit_api: DeribitAPISettings
     redis: RedisSettings
+    celery: CelerySettings
     application: ApplicationSettings
     cors: CORSSettings
 

@@ -26,24 +26,6 @@ def create_celery_app() -> Celery:
         include=["app.tasks.price_collection"],
     )
 
-    worker_concurrency = getattr(
-        settings,
-        "celery_worker_concurrency",
-        2 if settings.application.debug else 4,
-    )
-
-    beat_enabled = getattr(
-        settings,
-        "celery_beat_enabled",
-        True,
-    )
-
-    task_track_started = getattr(
-        settings,
-        "celery_task_track_started",
-        True,
-    )
-
     celery_app.conf.update(
         task_serializer="json",
         accept_content=["json"],
@@ -56,14 +38,16 @@ def create_celery_app() -> Celery:
         task_routes={
             "app.tasks.price_collection.*": {"queue": "price_collection"},
         },
+        worker_concurrency=settings.celery.worker_concurrency,
         worker_prefetch_multiplier=1,
-        task_acks_late=True,
         worker_max_tasks_per_child=1000,
-        worker_concurrency=worker_concurrency,
-        task_track_started=task_track_started,
+        task_acks_late=True,
+        task_track_started=settings.celery.task_track_started,
+        task_always_eager=False,
+        worker_cancel_long_running_tasks_on_connection_loss=True,
     )
 
-    if beat_enabled:
+    if settings.celery.beat_enabled:
         celery_app.conf.beat_schedule = {
             "collect-prices-every-minute": {
                 "task": "app.tasks.price_collection.collect_all_prices",
@@ -72,18 +56,12 @@ def create_celery_app() -> Celery:
             },
         }
 
-    logger.info(
-        "Celery app configured with Redis: %s:%s",
-        settings.redis.host,
-        settings.redis.port,
-    )
-    logger.info(
-        "Celery settings: concurrency=%s, beat_enabled=%s",
-        worker_concurrency,
-        beat_enabled,
-    )
+    logger.info("Celery app configured")
 
     return celery_app
 
 
-celery_app = create_celery_app()
+try:
+    celery_app = create_celery_app()
+except Exception as e:
+    logger.info("Failed to create celery app", e)
