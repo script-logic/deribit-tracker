@@ -53,6 +53,7 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+celerybeat-schedule
 
 # Virtual Environment
 .venv/

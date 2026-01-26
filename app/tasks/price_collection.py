@@ -91,35 +91,48 @@ async def _collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
 def collect_all_prices(self) -> dict[str, Any]:
     """
     Celery task to collect prices for all supported tickers.
+
+    This task is scheduled to run every minute via Celery Beat.
+
+    Returns:
+        Dictionary with collection results for all tickers.
     """
     logger.info("Starting price collection task")
 
-    return asyncio.run(_collect_all_prices_async(self))
-
-
-async def _collect_all_prices_async(self) -> dict[str, Any]:
-    """Async implementation of price collection."""
     tickers = ["btc_usd", "eth_usd"]
-    tasks = [_collect_price_for_ticker(ticker) for ticker in tickers]
-    results = await asyncio.gather(*tasks)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    successful = [r for r in results if r and r.get("success")]
-    failed = [r for r in results if r and not r.get("success")]
+    try:
+        tasks = [_collect_price_for_ticker(ticker) for ticker in tickers]
+        results = loop.run_until_complete(asyncio.gather(*tasks))
 
-    if failed and self.request.retries < self.max_retries:
-        logger.warning(
-            "Some collections failed, retrying (%s/%s)",
-            self.request.retries + 1,
-            self.max_retries,
-        )
-        raise self.retry(countdown=30)
+        successful = [r for r in results if r and r.get("success")]
+        failed = [r for r in results if r and not r.get("success")]
 
-    return {
-        "successful": len(successful),
-        "failed": len(failed),
-        "results": results,
-        "timestamp": int(datetime.now(UTC).timestamp()),
-    }
+        if failed and self.request.retries < self.max_retries:
+            logger.warning(
+                "Some collections failed, retrying (%s/%s)",
+                self.request.retries + 1,
+                self.max_retries,
+            )
+            raise self.retry(countdown=30)
+
+        return {
+            "successful": len(successful),
+            "failed": len(failed),
+            "results": results,
+            "timestamp": int(datetime.now(UTC).timestamp()),
+        }
+
+    except Exception as error:
+        logger.error("Price collection task failed: %s", str(error))
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=error) from error
+        raise
+
+    finally:
+        loop.close()
 
 
 @celery_app.task(
@@ -142,7 +155,7 @@ def collect_single_price(ticker: str) -> dict[str, Any] | None:
         logger.error("Unsupported ticker: %s", ticker)
         return None
 
-    loop = asyncio.new_event_loop()  # TODO
+    loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     try:
@@ -191,10 +204,3 @@ def health_check() -> dict[str, Any]:
 
     finally:
         loop.close()
-
-
-@celery_app.task(name="app.tasks.price_collection.test_task")
-def test_task() -> str:
-    """Simple test task to verify Celery is working."""
-    logger.info("Test task executed!")
-    return "Celery is working!"

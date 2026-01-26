@@ -12,9 +12,11 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core import settings
+from app.core import get_logger, settings
 
 from .base import Base
+
+logger = get_logger(__name__)
 
 
 class DatabaseManager:
@@ -113,3 +115,5 @@ class DatabaseManager:
 
 
 database_manager = DatabaseManager()
+database_manager._get_engine()
+database_manager._get_session_factory()

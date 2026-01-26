@@ -32,7 +32,7 @@ jobs:
         cat > .env << 'EOF'
         # Database Configuration
         DATABASE__HOST=localhost
-        DATABASE__PORT=5432
+        DATABASE__PORT=5433
         DATABASE__USER=test_user
         DATABASE__PASSWORD=test_password
         DATABASE__DB=test_db
@@ -103,7 +103,7 @@ jobs:
         run: |
           cat > .env << 'EOF'
           DATABASE__HOST=localhost
-          DATABASE__PORT=5432
+          DATABASE__PORT=5433
           DATABASE__USER=test_user
           DATABASE__PASSWORD=test_password
           DATABASE__DB=test_db

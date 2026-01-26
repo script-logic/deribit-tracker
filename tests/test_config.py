@@ -19,7 +19,6 @@ from app.core.config import (
     RedisSettings,
     Settings,
     get_settings,
-    init_settings,
 )
 
 
@@ -45,9 +44,9 @@ class TestDatabaseSettings:
             user="test",
             password="secret",  # type: ignore
             db="test_db",
-            port=5433,
+            port=5432,
         )
-        assert settings.port == 5433
+        assert settings.port == 5432
 
         with pytest.raises(ValidationError):
             DatabaseSettings(
@@ -69,18 +68,18 @@ class TestDatabaseSettings:
         """Test Data Source Name generation."""
         settings = DatabaseSettings(
             host="db.example.com",
-            port=5433,
+            port=5432,
             user="test_user",
             password="test_pass",  # type: ignore
             db="test_db",
         )
 
         assert settings.dsn == (
-            "postgresql://test_user:test_pass@db.example.com:5433/test_db"
+            "postgresql://test_user:test_pass@db.example.com:5432/test_db"
         )
         assert settings.async_dsn == (
             "postgresql+asyncpg://test_user"
-            ":test_pass@db.example.com:5433/test_db"
+            ":test_pass@db.example.com:5432/test_db"
         )
 
     def test_password_security(self):
@@ -233,7 +232,7 @@ class TestSettingsSingleton:
 
     def test_singleton_pattern(self):
         """Test that Settings is a proper singleton."""
-        settings1 = Settings.get_instance(
+        settings1 = get_settings(
             database={
                 "host": "localhost",
                 "port": 5432,
@@ -261,14 +260,14 @@ class TestSettingsSingleton:
             },
         )
 
-        settings2 = Settings.get_instance()
+        settings2 = get_settings()
 
         assert settings1 is settings2
         assert id(settings1) == id(settings2)
 
     def test_multiple_instantiation_prevention(self):
         """Test that direct instantiation raises error."""
-        Settings.get_instance(
+        get_settings(
             database={
                 "host": "localhost",
                 "port": 5432,
@@ -297,7 +296,7 @@ class TestSettingsSingleton:
         )
 
         with pytest.raises(RuntimeError, match="singleton"):
-            Settings(
+            get_settings(
                 database={
                     "host": "localhost",
                     "port": 5432,
@@ -334,7 +333,7 @@ class TestSettingsSingleton:
 
     def test_init_settings_function(self):
         """Test init_settings() convenience function."""
-        settings = init_settings(
+        settings = get_settings(
             database={
                 "host": "testhost",
                 "port": 5432,
@@ -368,7 +367,7 @@ class TestSettingsSingleton:
         os.environ,
         {
             "DATABASE__HOST": "envhost",
-            "DATABASE__PORT": "5433",
+            "DATABASE__PORT": "5432",
             "DATABASE__USER": "envuser",
             "DATABASE__PASSWORD": "envpass",
             "DATABASE__DB": "envdb",
@@ -378,10 +377,10 @@ class TestSettingsSingleton:
     )
     def test_environment_variable_loading(self):
         """Test loading settings from environment variables."""
-        settings = Settings.get_instance()
+        settings = get_settings()
 
         assert settings.database.host == "envhost"
-        assert settings.database.port == 5433
+        assert settings.database.port == 5432
         assert settings.database.user == "envuser"
         assert settings.database.db == "envdb"
         assert settings.application.debug is True
@@ -389,7 +388,7 @@ class TestSettingsSingleton:
     def test_log_initialization(self, caplog: pytest.LogCaptureFixture):
         """Test logging during settings initialization."""
         with caplog.at_level("INFO"):
-            Settings.get_instance(
+            get_settings(
                 database={
                     "host": "localhost",
                     "port": 5432,
@@ -423,7 +422,7 @@ class TestSettingsSingleton:
 
 def test_settings_immutability():
     """Test that settings objects are immutable after creation."""
-    settings = Settings.get_instance(
+    settings = get_settings(
         database={
             "host": "localhost",
             "port": 5432,

@@ -6,7 +6,6 @@ with proper connection pooling and error handling.
 """
 
 from celery import Celery
-from celery.schedules import crontab
 
 from . import get_logger, settings
 
@@ -68,7 +67,7 @@ def create_celery_app() -> Celery:
         celery_app.conf.beat_schedule = {
             "collect-prices-every-minute": {
                 "task": "app.tasks.price_collection.collect_all_prices",
-                "schedule": crontab(minute="*/1"),
+                "schedule": 60.0,
                 "options": {"queue": "price_collection"},
             },
         }

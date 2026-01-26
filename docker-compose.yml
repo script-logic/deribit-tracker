@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${DATABASE__USER:-postgres}
       POSTGRES_PASSWORD: ${DATABASE__PASSWORD:-your_secure_password}
     ports:
-      - "${DATABASE__PORT:-5432}:5432"
+      - "${DATABASE__PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -56,7 +56,7 @@ services:
       sh -c "
         echo 'Applying migrations...' &&
         poetry run alembic upgrade head &&
-        poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+        poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
     env_file:
       - .env
@@ -82,11 +82,36 @@ services:
     volumes:
       - .:/app
     command: >
-      sh -c "if [ '$$CELERY__BEAT_ENABLED' = 'true' ]; then
-               poetry run celery -A app.tasks.celery_app worker --beat --loglevel=info --pool=threads --concurrency=$$CELERY__WORKER_CONCURRENCY --queues=price_collection,default;
-             else
-               poetry run celery -A app.tasks.celery_app worker --loglevel=info --pool=threads --concurrency=$$CELERY__WORKER_CONCURRENCY --queues=price_collection,default;
-             fi"
+          poetry run celery -A app.tasks.celery_app worker
+          --loglevel=info
+          --concurrency=2
+          --queues=price_collection,celery,default
+    env_file:
+      - .env
+
+  celery_beat:
+    build: .
+    environment:
+      DATABASE__HOST: postgres
+      DATABASE__PORT: 5432
+      DATABASE__USER: ${DATABASE__USER:-postgres}
+      DATABASE__PASSWORD: ${DATABASE__PASSWORD:-your_secure_password}
+      DATABASE__DB: ${DATABASE__DB:-deribit_tracker}
+      REDIS__HOST: redis
+      REDIS__PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      celery_worker:
+        condition: service_started
+    volumes:
+      - .:/app
+    command: >
+      poetry run celery -A app.tasks.celery_app beat
+      --loglevel=info
+      --scheduler=celery.beat:PersistentScheduler
     env_file:
       - .env
 
