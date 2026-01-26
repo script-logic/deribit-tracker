@@ -7,7 +7,7 @@ Main application module with metadata and imports.
 from functools import lru_cache
 from importlib.metadata import metadata
 
-from . import core, database
+from . import api, clients, core, database, services, tasks
 
 
 @lru_cache
@@ -40,9 +40,13 @@ version, description, title = get_app_metadata()
 
 
 __all__ = [
+    "api",
+    "clients",
     "core",
     "database",
     "description",
+    "services",
+    "tasks",
     "title",
     "version",
 ]

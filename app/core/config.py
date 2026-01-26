@@ -91,30 +91,38 @@ class DeribitAPISettings(BaseModel):
 
 
 class RedisSettings(BaseModel):
-    """
-    Redis configuration for Celery task queue.
-
-    Attributes:
-        host: Redis server hostname.
-        port: Redis server port (1-65535).
-        db: Redis database number (0-15).
-    """
-
     host: str = "localhost"
     port: int = Field(default=6379, ge=1, le=65535)
     db: int = Field(default=0, ge=0, le=15)
-
-    model_config = {"frozen": True}
+    password: SecretStr | None = None
+    ssl: bool = False
 
     @property
     def url(self) -> str:
-        """
-        Redis connection URL.
+        """Redis connection URL with optional authentication."""
+        auth = ""
+        if self.password:
+            auth = f":{self.password.get_secret_value()}@"
 
-        Returns:
-            Redis connection URL in format: redis://host:port/db
-        """
-        return f"redis://{self.host}:{self.port}/{self.db}"
+        protocol = "rediss" if self.ssl else "redis"
+        return f"{protocol}://{auth}{self.host}:{self.port}/{self.db}"
+
+
+class CelerySettings(BaseModel):
+    """
+    Celery task queue configuration.
+
+    Attributes:
+        worker_concurrency: Number of concurrent worker processes.
+        beat_enabled: Enable periodic task scheduling.
+        task_track_started: Track when task starts execution.
+    """
+
+    worker_concurrency: int = Field(default=2, ge=1, le=10)
+    beat_enabled: bool = True
+    task_track_started: bool = True
+
+    model_config = {"frozen": True}
 
 
 class ApplicationSettings(BaseModel):

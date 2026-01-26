@@ -14,6 +14,8 @@ credentials/
 .cache/
 scan_project.py
 project_scan_output.txt
+start_dev.ps1
+scripts
 
 # coverage
 .coverage
