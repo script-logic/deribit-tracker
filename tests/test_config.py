@@ -249,6 +249,11 @@ class TestSettingsSingleton:
                 "port": 6379,
                 "db": 0,
             },
+            celery={
+                "worker_concurrency": 2,
+                "beat_enabled": True,
+                "task_track_started": True,
+            },
             application={
                 "debug": False,
                 "api_v1_prefix": "/api/v1",
@@ -283,6 +288,11 @@ class TestSettingsSingleton:
                 "host": "localhost",
                 "port": 6379,
                 "db": 0,
+            },
+            celery={
+                "worker_concurrency": 2,
+                "beat_enabled": True,
+                "task_track_started": True,
             },
             application={
                 "debug": False,
@@ -339,6 +349,11 @@ class TestSettingsSingleton:
                     "port": 6379,
                     "db": 0,
                 },
+                celery={
+                    "worker_concurrency": 2,
+                    "beat_enabled": True,
+                    "task_track_started": True,
+                },
                 application={
                     "debug": True,
                     "api_v1_prefix": "/api/v1",
@@ -372,6 +387,11 @@ def test_settings_immutability():
             "host": "localhost",
             "port": 6379,
             "db": 0,
+        },
+        celery={
+            "worker_concurrency": 2,
+            "beat_enabled": True,
+            "task_track_started": True,
         },
         application={
             "debug": False,
