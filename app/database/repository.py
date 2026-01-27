@@ -2,7 +2,7 @@ from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import database_manager
@@ -169,7 +169,7 @@ class PriceRepository:
                 PriceTick.timestamp <= max_timestamp,
             )
             .order_by(
-                (PriceTick.timestamp - target_timestamp).abs(),
+                func.abs(PriceTick.timestamp - target_timestamp),
             )
             .limit(1)
         )

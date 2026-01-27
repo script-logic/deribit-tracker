@@ -11,7 +11,9 @@ client = TestClient(app)
 def test_root_endpoint():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "root"}
+    assert response.json() == {
+        "message": "Deribit Price Tracker API is running",
+    }
 
 
 def test_health_check():
@@ -21,7 +23,9 @@ def test_health_check():
 
 
 def test_api_metadata():
-    response = client.get("/openapi.json")
+    from app.core import settings
+
+    response = client.get(f"{settings.application.api_v1_prefix}/openapi.json")
     assert response.status_code == 200
 
     data = response.json()
