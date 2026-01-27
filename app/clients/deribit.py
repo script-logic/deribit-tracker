@@ -13,16 +13,9 @@ from aiohttp import ClientError, ClientResponseError, ClientTimeout
 
 from app.core import get_logger, settings
 
+from .exceptions import DeribitAPIError
+
 logger = get_logger(__name__)
-
-
-class DeribitAPIError(Exception):
-    """Base exception for Deribit API errors."""
-
-    def __init__(self, message: str, status_code: int | None = None):
-        self.message = message
-        self.status_code = status_code
-        super().__init__(message)
 
 
 class DeribitClient:
@@ -148,7 +141,7 @@ class DeribitClient:
                     wait_time = 2**attempt
                     logger.warning(
                         "Connection error: %s, retrying in %s seconds...",
-                        str(error),
+                        error,
                         wait_time,
                     )
                     await asyncio.sleep(wait_time)

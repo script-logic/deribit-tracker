@@ -8,8 +8,6 @@ all application modules.
 
 import logging
 import sys
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
 from typing import ClassVar
 
 
@@ -66,35 +64,6 @@ class AppLogger:
         console_handler.setFormatter(formatter)
         console_handler.setLevel(logging.INFO)
         root_logger.addHandler(console_handler)
-
-    @classmethod
-    def _add_file_handler(
-        cls,
-        logger: logging.Logger,
-        formatter: logging.Formatter,
-    ) -> None:
-        """
-        Add rotating file handler for debug logging.
-
-        Args:
-            logger: Logger to add handler to.
-            formatter: Formatter to use for log messages.
-        """
-        try:
-            log_dir = Path("logs")
-            log_dir.mkdir(exist_ok=True)
-
-            file_handler = RotatingFileHandler(
-                filename=log_dir / "deribit_tracker.log",
-                maxBytes=10_485_760,
-                backupCount=5,
-                encoding="utf-8",
-            )
-            file_handler.setFormatter(formatter)
-            file_handler.setLevel(logging.DEBUG)
-            logger.addHandler(file_handler)
-        except (PermissionError, OSError) as e:
-            logger.warning("Could not create file handler: %s", e)
 
     @classmethod
     def set_level(

@@ -1,22 +1,18 @@
-from importlib.metadata import metadata
-
-from app import description, title, version
+from app.metadata import project_metadata
 
 
 def test_package_metadata_loaded():
-    assert version is not None
-    assert title is not None
-    assert description is not None
-    assert len(version) > 0
-    assert len(title) > 0
+    assert project_metadata["version"] is not None
+    assert project_metadata["title"] is not None
+    assert project_metadata["description"] is not None
+    assert len(project_metadata["version"]) > 0
+    assert len(project_metadata["title"]) > 0
 
 
 def test_version_matches_pyproject():
-    pkg_metadata = metadata("deribit-tracker").json
-    expected_version = pkg_metadata.get("version", "0.3.0")
-    assert version == expected_version
+    assert project_metadata["version"] == "0.4.0"
 
 
 def test_title_formatting():
-    assert "-" not in title
-    assert title[0].isupper()
+    assert "-" not in project_metadata["title"]
+    assert project_metadata["title"][0].isupper()

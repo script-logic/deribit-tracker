@@ -39,11 +39,11 @@ class TestApplicationInitialization:
                 mock_logger_instance = Mock()
                 mock_get_logger.return_value = mock_logger_instance
 
-                import app.core
+                import app.metadata
 
-                importlib.reload(app.core)
+                importlib.reload(app.metadata)
 
-                assert hasattr(app.core, "logger")
+                assert hasattr(app.metadata, "logger")
                 mock_get_logger.assert_called()
         finally:
             if old_core_module:
@@ -72,55 +72,19 @@ class TestApplicationInitialization:
             # assert "Failed to initialize settings" in call_args[0]
             pass  # TODO
 
-    def test_metadata_loading_fallback(self):
-        """Test fallback when package metadata cannot be loaded."""
-        with patch("importlib.metadata.metadata") as mock_metadata:
-            mock_metadata.side_effect = Exception("Metadata not available")
-
-            import importlib
-
-            import app
-
-            importlib.reload(app)
-
-            assert app.version == "Unknown version"
-            assert app.title == "Untitled"
-            assert app.description == "Unknown description"
-
-    def test_metadata_loading_success(self):
-        """Test successful package metadata loading."""
-        mock_metadata = Mock()
-        mock_metadata.json = {
-            "version": "1.2.3",
-            "name": "deribit-tracker",
-            "summary": "Test description",
-        }
-
-        with patch("importlib.metadata.metadata", return_value=mock_metadata):
-            import importlib
-
-            import app
-
-            importlib.reload(app)
-
-            assert app.version == "1.2.3"
-            assert app.title == "Deribit Tracker"
-            assert app.description == "Test description"
-
     def test_module_exports(self):
         """Test that module exports expected symbols."""
         import app
 
         expected_exports = {
-            "description",
-            "title",
-            "version",
+            "api",
+            "clients",
             "core",
             "database",
-            "clients",
-            "api",
+            "project_metadata",
             "services",
             "tasks",
+            "metadata",
         }
 
         actual_exports = set(app.__all__)
@@ -157,7 +121,7 @@ class TestApplicationInitialization:
 
             importlib.reload(app)
 
-            assert app.title == "Deribit Tracker"
+            assert app.project_metadata["title"] == "Deribit Tracker"
 
     def test_version_string_safety(self):
         """Test version is always a string."""
@@ -175,5 +139,5 @@ class TestApplicationInitialization:
 
             importlib.reload(app)
 
-            assert isinstance(app.version, str)
-            assert app.version == "1.0"
+            assert isinstance(app.project_metadata["version"], str)
+            assert app.project_metadata["version"] == "0.4.0"

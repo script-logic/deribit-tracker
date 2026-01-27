@@ -6,7 +6,6 @@ across different scenarios.
 """
 
 import logging
-from unittest.mock import Mock, patch
 
 from app.core.logger import AppLogger, get_logger
 
@@ -273,26 +272,3 @@ def test_logger_in_different_modules():
 
     root_logger = logging.getLogger()
     assert len(root_logger.handlers) == 1
-
-
-@patch("app.core.logger.Path.mkdir")
-@patch("logging.getLogger")
-def test_file_handler_creation_error(mock_get_logger, mock_mkdir):
-    """Test error handling when file handler creation fails."""
-    mock_mkdir.side_effect = PermissionError("Permission denied")
-
-    mock_logger = Mock(spec=logging.Logger)
-    mock_logger.warning = Mock()
-    mock_logger.addHandler = Mock()
-    mock_get_logger.return_value = mock_logger
-
-    formatter = logging.Formatter()
-
-    AppLogger._add_file_handler(mock_logger, formatter)
-
-    mock_logger.warning.assert_called_once_with(
-        "Could not create file handler: %s",
-        mock_mkdir.side_effect,
-    )
-
-    mock_logger.addHandler.assert_not_called()

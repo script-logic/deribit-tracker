@@ -2,6 +2,10 @@
 API module package exports.
 """
 
-from .v1 import api_router
+from .routes import api_v1_router, health_check_router, root_router
 
-__all__ = ["api_router"]
+__all__ = [
+    "api_v1_router",
+    "health_check_router",
+    "root_router",
+]

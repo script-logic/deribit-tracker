@@ -5,6 +5,7 @@ Uses Pydantic for type-safe configuration with support for nested models,
 environment variable loading, and singleton pattern for global access.
 """
 
+import logging
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field, SecretStr, field_validator
@@ -139,7 +140,7 @@ class ApplicationSettings(BaseModel):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     project_name: str = "Deribit Price Tracker API"
-    version: str = "0.3.0"
+    version: str = "0.4.0"
 
     model_config = {"frozen": True}
 
@@ -279,3 +280,10 @@ def get_settings(**kwargs) -> Settings:
         return Settings.init_instance(**kwargs)
 
     return Settings._instance
+
+
+try:
+    settings = get_settings()
+except Exception as e:
+    logging.error("Failed to initialize settings: %s", e)
+    raise

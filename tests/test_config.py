@@ -6,6 +6,7 @@ of the configuration system.
 """
 
 import os
+from copy import copy
 from unittest.mock import patch
 
 import pytest
@@ -179,7 +180,7 @@ class TestApplicationSettings:
         assert not settings.debug
         assert settings.api_v1_prefix == "/api/v1"
         assert settings.project_name == "Deribit Price Tracker API"
-        assert settings.version == "0.3.0"
+        assert settings.version == "0.4.0"
 
     def test_api_prefix_validation(self):
         """Test API prefix validation and normalization."""
@@ -226,7 +227,7 @@ class TestSettingsSingleton:
     def setup_method(self):
         """Reset singleton instance before each test."""
         Settings._instance = None
-        for key in os.environ:
+        for key in copy(os.environ):
             if key.startswith(("DATABASE__", "DERIBIT_API__", "REDIS__")):
                 del os.environ[key]
 
