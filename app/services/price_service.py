@@ -213,11 +213,11 @@ class PriceService:
             if price_at_time_tick:
                 price_at_time = price_at_time_tick.price
 
-            (closest_price_tick,) = (
+            closest_price_tick = (
                 await self.repository.get_price_closest_to_timestamp(
                     ticker=ticker,
                     target_timestamp=target_timestamp,
-                ),
+                )
             )
             if closest_price_tick:
                 closest_price = closest_price_tick.price
@@ -299,5 +299,5 @@ class PriceService:
         if normalized_ticker not in {"btc_usd", "eth_usd"}:
             raise ValueError(
                 f"Unsupported ticker: {ticker}. "
-                "Supported: 'btc_usd', 'eth_usd'"
+                f"Supported: 'btc_usd', 'eth_usd'"
             )
