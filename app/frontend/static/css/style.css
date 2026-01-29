@@ -1,0 +1,206 @@
+:root {
+    --neon-pink: #ff2a6d;
+    --neon-blue: #05d9e8;
+    --neon-purple: #d304cc;
+    --dark-bg: #000000;
+    --grid-color: rgba(5, 217, 232, 0.1);
+    --text-main: #e0e0e0;
+    --terminal-font: 'Share Tech Mono', monospace;
+}
+
+* {
+    box-sizing: border_box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--dark-bg);
+    color: var(--text-main);
+    font-family: var(--terminal-font);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 30px 30px;
+    position: relative;
+}
+
+/* CRT Scanline Effect */
+body::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%,
+            rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    position: relative;
+    z-index: 3;
+}
+
+/* Header */
+header {
+    border-bottom: 2px solid var(--neon-pink);
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    box-shadow: 0 0 15px var(--neon-pink);
+}
+
+h1 {
+    font-size: 2.5rem;
+    color: var(--neon-blue);
+    text-shadow: 2px 2px var(--neon-purple);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+}
+
+.status-badge {
+    border: 1px solid var(--neon-blue);
+    padding: 5px 15px;
+    color: var(--neon-blue);
+    box-shadow: 0 0 5px var(--neon-blue);
+    animation: blink 2s infinite;
+}
+
+/* Dashboard Grid */
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+.card {
+    background: rgba(1, 1, 43, 0.9);
+    border: 1px solid var(--neon-purple);
+    padding: 20px;
+    position: relative;
+    box-shadow: 0 0 10px rgba(211, 4, 204, 0.3);
+}
+
+.card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-shadow: inset 0 0 20px rgba(211, 4, 204, 0.1);
+    pointer-events: none;
+}
+
+.card h2 {
+    color: var(--neon-pink);
+    margin-bottom: 15px;
+    border-bottom: 1px dashed var(--neon-blue);
+    padding-bottom: 5px;
+}
+
+.price-display {
+    font-size: 2.5rem;
+    color: #fff;
+    text-shadow: 0 0 10px #fff;
+}
+
+.ticker-label {
+    font-size: 0.8rem;
+    color: var(--neon-blue);
+    opacity: 0.8;
+}
+
+/* Data Table */
+.data-panel {
+    border: 1px solid var(--neon-blue);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+}
+
+.controls {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+select,
+button {
+    background: transparent;
+    border: 1px solid var(--neon-blue);
+    color: var(--neon-blue);
+    padding: 10px 20px;
+    font-family: var(--terminal-font);
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+}
+
+button:hover {
+    background: var(--neon-blue);
+    color: var(--dark-bg);
+    box-shadow: 0 0 15px var(--neon-blue);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th {
+    text-align: left;
+    color: var(--neon-pink);
+    border-bottom: 2px solid var(--neon-purple);
+    padding: 10px;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid rgba(5, 217, 232, 0.3);
+    color: var(--text-main);
+}
+
+tr:hover td {
+    background: rgba(5, 217, 232, 0.1);
+    color: #fff;
+}
+
+@keyframes blink {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}

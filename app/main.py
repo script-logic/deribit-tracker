@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .api import (
     api_v1_router,
     health_check_router,
     register_exception_handlers,
-    root_router,
 )
 from .core import get_logger, get_settings
+from .frontend import router as frontend_router
 
 
 def create_app() -> FastAPI:
@@ -45,7 +46,12 @@ def create_app() -> FastAPI:
             api_v1_router,
             prefix=app_config.api_v1_prefix,
         )
-        app.include_router(root_router)
+        app.mount(
+            "/static",
+            StaticFiles(directory="app/frontend/static"),
+            name="static",
+        )
+        app.include_router(frontend_router)
         app.include_router(health_check_router)
 
         logger.info(

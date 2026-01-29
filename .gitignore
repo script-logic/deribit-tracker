@@ -29,6 +29,7 @@ coverage.xml
 pytest.xml
 test-results/
 *.log
+test.db
 
 # Python
 __pycache__/

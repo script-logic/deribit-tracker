@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }} // DASHBOARD</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>{{ project_name }}</h1>
+                <div style="font-size: 0.8rem; color: var(--neon-pink);">
+                    SYS.VER: {{ version }} // CONNECTED
+                </div>
+            </div>
+            <div class="status-badge">
+                ● SYSTEM ONLINE
+            </div>
+        </header>
+
+        <!-- Live Tickers -->
+        <main class="dashboard">
+            <div class="card">
+                <h2>>> BTC_USD</h2>
+                <div class="price-display" id="btc-price">LOADING...</div>
+                <div class="ticker-label">INDEX_PRICE // LIVE</div>
+            </div>
+
+            <div class="card">
+                <h2>>> ETH_USD</h2>
+                <div class="price-display" id="eth-price">LOADING...</div>
+                <div class="ticker-label">INDEX_PRICE // LIVE</div>
+            </div>
+        </main>
+
+        <!-- Historical Data Terminal -->
+        <section class="data-panel">
+            <h2 style="color: var(--neon-blue); margin-bottom: 20px;">
+                >> ARCHIVE_ACCESS
+            </h2>
+
+            <div class="controls">
+                <select id="ticker-select">
+                    <option value="btc_usd">BTC_USD</option>
+                    <option value="eth_usd">ETH_USD</option>
+                </select>
+                <button onclick="fetchHistory()">REFRESH_DATA</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>TIMESTAMP (UTC)</th>
+                            <th>TICKER</th>
+                            <th>PRICE (USD)</th>
+                            <th>ID</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <!-- JS renders rows here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const API_PREFIX = "{{ api_v1_prefix }}";
+
+        const fmtPrice = (price) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(price);
+        };
+
+        const fmtDate = (ts) => {
+            return new Date(ts * 1000).toLocaleString('en-GB', {
+                timeZone: 'UTC'
+            }).replace(',', ' //');
+        };
+
+        async function updateTicker(symbol, elementId) {
+            try {
+                const response = await fetch(
+                    `${API_PREFIX}/prices/latest?ticker=${symbol}`
+                );
+                if (!response.ok) throw new Error("NetErr");
+                const data = await response.json();
+
+                const el = document.getElementById(elementId);
+                el.innerText = fmtPrice(data.price);
+                el.style.textShadow = "0 0 20px var(--neon-blue)";
+
+                setTimeout(() => {
+                    el.style.textShadow = "0 0 10px #fff";
+                }, 200);
+
+            } catch (err) {
+                console.error(`Failed to fetch ${symbol}`, err);
+                document.getElementById(elementId).innerText = "ERR_CONN";
+            }
+        }
+
+        async function fetchHistory() {
+            const ticker = document.getElementById('ticker-select').value;
+            const tbody = document.getElementById('history-body');
+
+            tbody.innerHTML = '<tr><td colspan="4">ACCESSING DATABASE...</td></tr>';
+
+            try {
+                const response = await fetch(
+                    `${API_PREFIX}/prices/?ticker=${ticker}&limit=10`
+                );
+                const data = await response.json();
+
+                tbody.innerHTML = '';
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">NO DATA FOUND</td></tr>';
+                    return;
+                }
+
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fmtDate(row.timestamp)}</td>
+                        <td style="color: var(--neon-pink)">${row.ticker.toUpperCase()}</td>
+                        <td style="color: var(--neon-blue)">${fmtPrice(row.price)}</td>
+                        <td style="opacity: 0.5;">#${row.id}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (err) {
+                console.error("History fetch failed", err);
+                tbody.innerHTML = '<tr><td colspan="4" style="color:red">SYSTEM FAILURE</td></tr>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTicker('btc_usd', 'btc-price');
+            updateTicker('eth_usd', 'eth-price');
+            fetchHistory();
+
+            setInterval(() => {
+                updateTicker('btc_usd', 'btc-price');
+                updateTicker('eth_usd', 'eth-price');
+            }, 10000);
+        });
+    </script>
+</body>
+
+</html>

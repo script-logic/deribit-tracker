@@ -11,11 +11,6 @@ root_router = APIRouter()
 health_check_router = APIRouter()
 
 
-@root_router.get("/")
-async def root():
-    return {"message": "Deribit Price Tracker API is running"}
-
-
 @health_check_router.get("/health")
 async def health_check():
     return {"status": "healthy"}

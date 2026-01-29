@@ -262,9 +262,6 @@ class Settings(BaseSettings):
     Consolidates all configuration sections and loads values from
     environment variables or .env file. Uses Pydantic for validation
     and type safety with nested models.
-
-    Environment variables follow the pattern: SECTION__FIELD_NAME
-    Example: DATABASE__HOST, DERIBIT_API__CLIENT_ID
     """
 
     _instance: ClassVar["Settings | None"] = None
