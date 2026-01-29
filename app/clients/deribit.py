@@ -11,16 +11,15 @@ from typing import Any
 import aiohttp
 from aiohttp import ClientError, ClientResponseError, ClientTimeout
 
-from app.core import get_logger, settings
+from app.core import get_logger
 
 from .exceptions import DeribitAPIError
-
-logger = get_logger(__name__)
 
 
 class DeribitClient:
     """
-    Async client for Deribit API with connection pooling and error handling.
+    Async client for Deribit API with connection pooling and error
+    handling.
 
     Uses aiohttp for efficient async HTTP requests with configurable
     timeouts and retry logic for public endpoints.
@@ -29,14 +28,19 @@ class DeribitClient:
     _session: aiohttp.ClientSession | None = None
     _timeout = ClientTimeout(total=30, connect=10)
 
-    def __init__(self, base_url: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+    ) -> None:
         """
         Initialize Deribit client.
 
         Args:
+            logger: Logger instance.
             base_url: Deribit API base URL. Defaults to settings.
         """
-        self.base_url = base_url or settings.deribit_api.base_url
+        self.logger = get_logger()
+        self.base_url = base_url
         self._headers = {"Content-Type": "application/json"}
 
     @classmethod
@@ -49,9 +53,11 @@ class DeribitClient:
         """
         if cls._session is None or cls._session.closed:
             connector = aiohttp.TCPConnector(
-                limit=10,
-                limit_per_host=2,
+                limit=20,
+                limit_per_host=5,
                 ttl_dns_cache=300,
+                force_close=False,
+                enable_cleanup_closed=True,
             )
             cls._session = aiohttp.ClientSession(
                 connector=connector,
@@ -101,12 +107,7 @@ class DeribitClient:
                     headers=self._headers,
                 ) as response:
                     response.raise_for_status()
-                    data = await response.json()
-
-                    if not isinstance(data, dict):
-                        raise DeribitAPIError(
-                            f"Invalid response format: {type(data)}",
-                        )
+                    data: dict[str, Any] = await response.json()
 
                     if data.get("error"):
                         error_msg = data["error"].get(
@@ -123,7 +124,7 @@ class DeribitClient:
             except ClientResponseError as error:
                 if error.status >= 500 and attempt < max_retries - 1:
                     wait_time = 2**attempt
-                    logger.warning(
+                    self.logger.warning(
                         "Server error %s, retrying in %s seconds...",
                         error.status,
                         wait_time,
@@ -139,7 +140,7 @@ class DeribitClient:
             except ClientError as error:
                 if attempt < max_retries - 1:
                     wait_time = 2**attempt
-                    logger.warning(
+                    self.logger.warning(
                         "Connection error: %s, retrying in %s seconds...",
                         error,
                         wait_time,
@@ -154,7 +155,7 @@ class DeribitClient:
             except TimeoutError as error:
                 if attempt < max_retries - 1:
                     wait_time = 2**attempt
-                    logger.warning(
+                    self.logger.warning(
                         "Timeout, retrying in %s seconds...",
                         wait_time,
                     )
@@ -205,7 +206,7 @@ class DeribitClient:
                 )
 
             price = float(result["index_price"])
-            logger.debug("Retrieved %s price: %s", currency, price)
+            self.logger.debug("Retrieved %s price: %s", currency, price)
             return price
 
         except (KeyError, ValueError, TypeError) as error:
@@ -234,10 +235,12 @@ class DeribitClient:
         try:
             prices = await asyncio.gather(*tasks, return_exceptions=True)
 
-            result = {}
+            result: dict[str, float] = {}
             for currency, price in zip(currencies, prices, strict=False):
                 if isinstance(price, BaseException):
-                    logger.error("Failed to get %s price: %s", currency, price)
+                    self.logger.error(
+                        "Failed to get %s price: %s", currency, price
+                    )
                     continue
 
                 result[currency] = price
@@ -245,7 +248,7 @@ class DeribitClient:
             return result
 
         except Exception as error:
-            logger.error("Failed to get prices: %s", error)
+            self.logger.error("Failed to get prices: %s", error)
             raise
 
     async def health_check(self) -> bool:

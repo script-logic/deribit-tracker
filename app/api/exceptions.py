@@ -2,7 +2,7 @@
 Custom exceptions and error handlers for API error handling.
 """
 
-from typing import Any, cast
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -69,13 +69,15 @@ class ServiceUnavailableError(APIError):
         )
 
 
-async def http_exception_handler(
+async def http_exception_handler(  # noqa: RUF029
     request: Request,
     exc: Exception,
 ) -> JSONResponse:
     """Handle HTTPException and APIError."""
     if not isinstance(exc, HTTPException):
         raise exc
+
+    response_content: dict[str, Any]
 
     if isinstance(exc, APIError):
         logger.warning(
@@ -87,7 +89,7 @@ async def http_exception_handler(
         )
 
         response_content = {
-            "detail": cast(str, exc.detail),
+            "detail": exc.detail,
             "error_type": exc.error_type,
             "details": exc.details,
         }
@@ -99,7 +101,7 @@ async def http_exception_handler(
         )
 
         response_content = {
-            "detail": str(exc.detail),
+            "detail": exc.detail,
             "error_type": "http_error",
         }
 
@@ -109,7 +111,7 @@ async def http_exception_handler(
     )
 
 
-async def validation_exception_handler(
+async def validation_exception_handler(  # noqa: RUF029
     request: Request,
     exc: Exception,
 ) -> JSONResponse:
@@ -132,7 +134,7 @@ async def validation_exception_handler(
     )
 
 
-async def generic_exception_handler(
+async def generic_exception_handler(  # noqa: RUF029
     request: Request,
     exc: Exception,
 ) -> JSONResponse:

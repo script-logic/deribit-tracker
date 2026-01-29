@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from .v1.endpoints import prices_router
 
+api_v1_router = APIRouter()
 root_router = APIRouter()
 health_check_router = APIRouter()
 
@@ -20,7 +21,6 @@ async def health_check():
     return {"status": "healthy"}
 
 
-api_v1_router = APIRouter()
 api_v1_router.include_router(
     prices_router,
     prefix="/prices",

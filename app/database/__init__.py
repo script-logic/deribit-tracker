@@ -5,11 +5,11 @@ Provides clean, minimal exports for database functionality.
 """
 
 from .base import Base
-from .deps import get_db_session
-from .manager import database_manager
+from .manager import DatabaseManager
+from .repository import PriceRepository
 
 __all__ = [
     "Base",
-    "database_manager",
-    "get_db_session",
+    "DatabaseManager",
+    "PriceRepository",
 ]

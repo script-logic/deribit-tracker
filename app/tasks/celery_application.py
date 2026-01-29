@@ -1,13 +1,11 @@
 """
-Celery configuration for background task processing.
-
 Configures Celery with Redis broker and result backend,
 with proper connection pooling and error handling.
 """
 
 from celery import Celery
 
-from . import get_logger, settings
+from app.core import get_logger, get_settings
 
 logger = get_logger(__name__)
 
@@ -19,6 +17,8 @@ def create_celery_app() -> Celery:
     Returns:
         Configured Celery instance with Redis broker.
     """
+    settings = get_settings()
+
     celery_app = Celery(
         "deribit_tracker",
         broker=settings.redis.url,
@@ -61,7 +61,4 @@ def create_celery_app() -> Celery:
     return celery_app
 
 
-try:
-    celery_app = create_celery_app()
-except Exception as e:
-    logger.info("Failed to create celery app", e)
+celery_app = create_celery_app()

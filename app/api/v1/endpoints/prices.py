@@ -7,7 +7,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.exceptions import NotFoundError
-from app.api.v1.dependencies import get_price_service
 from app.api.v1.schemas import (
     DateFilterParams,
     ErrorResponse,
@@ -16,7 +15,7 @@ from app.api.v1.schemas import (
     PriceTickResponse,
 )
 from app.core import get_logger
-from app.services.price_service import PriceService
+from app.dependencies import PriceServiceDep
 
 logger = get_logger(__name__)
 
@@ -46,7 +45,7 @@ async def get_all_prices(
         ),
     ],
     pagination: Annotated[PaginationParams, Depends()],
-    price_service: Annotated[PriceService, Depends(get_price_service)],
+    price_service: PriceServiceDep,
 ) -> list[PriceTickResponse]:
     """
     Get all price records for specified ticker.
@@ -100,7 +99,7 @@ async def get_latest_price(
             examples=["btc_usd", "eth_usd"],
         ),
     ],
-    price_service: Annotated[PriceService, Depends(get_price_service)],
+    price_service: PriceServiceDep,
 ) -> PriceTickResponse:
     """
     Get latest price for ticker.
@@ -161,7 +160,7 @@ async def get_price_at_timestamp(
             ge=0,
         ),
     ],
-    price_service: Annotated[PriceService, Depends(get_price_service)],
+    price_service: PriceServiceDep,
 ) -> PriceTickResponse:
     """
     Get price at exact timestamp.
@@ -238,7 +237,7 @@ async def get_price_closest_to_timestamp(
             ge=0,
         ),
     ],
-    price_service: Annotated[PriceService, Depends(get_price_service)],
+    price_service: PriceServiceDep,
     max_difference: Annotated[
         int,
         Query(
@@ -319,7 +318,7 @@ async def get_prices_by_date(
         ),
     ],
     date_filter: Annotated[DateFilterParams, Depends()],
-    price_service: Annotated[PriceService, Depends(get_price_service)],
+    price_service: PriceServiceDep,
 ) -> list[PriceTickResponse]:
     """
     Get prices by date range.
@@ -382,7 +381,7 @@ async def get_price_statistics(
             examples=["btc_usd", "eth_usd"],
         ),
     ],
-    price_service: Annotated[PriceService, Depends(get_price_service)],
+    price_service: PriceServiceDep,
     timestamp: Annotated[
         int | None,
         Query(

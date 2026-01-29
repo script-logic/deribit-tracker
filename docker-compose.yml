@@ -86,7 +86,7 @@ services:
       --loglevel=info
       --concurrency=${CELERY__WORKER_CONCURRENCY:-2}
       --pool=solo
-      --queues=price_collection,celery,default
+      --queues=price_collection
     env_file:
     - .env
 
@@ -113,7 +113,6 @@ services:
       poetry run celery -A app.tasks.celery_app beat
       --loglevel=info
       --scheduler=celery.beat:PersistentScheduler
-
     env_file:
       - .env
 
