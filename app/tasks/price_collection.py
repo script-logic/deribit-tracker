@@ -75,7 +75,7 @@ async def collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
     acks_late=True,
     ignore_result=False,
 )
-def collect_all_prices(self: Task):  # type: ignore
+def collect_all_prices(self: Task) -> dict[str, Any]:  # type: ignore
     """
     Celery task to collect prices for all supported tickers.
 

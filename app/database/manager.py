@@ -88,7 +88,6 @@ class DatabaseManager:
             AsyncSession: Database session.
         """
         session = self._get_session_factory()()
-        logger.debug("=================================== %s, session")
 
         try:
             yield session
