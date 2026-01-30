@@ -228,7 +228,6 @@ h1 {
 }
 
 .date-inputs > div, .pagination-inputs > div {
-    flex: 1;
     min-width: 200px;
 }
 

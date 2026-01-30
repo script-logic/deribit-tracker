@@ -22,9 +22,6 @@
                     SYS.VER: {{ version }} // CONNECTED
                 </div>
             </div>
-            <div class="status-badge">
-                ● SYSTEM ONLINE
-            </div>
         </header>
 
         <!-- Live Tickers -->
@@ -146,6 +143,7 @@
                         <thead id="results-head">
                             <tr>
                                 <th>TIMESTAMP (UTC)</th>
+                                <th>TIMESTAMP (UNIX)</th>
                                 <th>TICKER</th>
                                 <th>PRICE (USD)</th>
                                 <th>RECORD_ID</th>
@@ -218,7 +216,6 @@
     <script>
         const API_PREFIX = "{{ api_v1_prefix }}";
 
-        // Formatting functions
         const fmtPrice = (price) => {
             if (price === null || price === undefined) return 'N/A';
             return new Intl.NumberFormat('en-US', {
@@ -245,10 +242,9 @@
         const fmtDateTime = (dt) => {
             if (!dt) return '';
             const date = new Date(dt);
-            return date.toISOString().slice(0, 16); // For datetime-local input
+            return date.toISOString().slice(0, 16);
         };
 
-        // Update current timestamp display
         function updateCurrentTimestamp() {
             const now = Math.floor(Date.now() / 1000);
             document.getElementById('current-timestamp').textContent = now;
@@ -256,7 +252,6 @@
             return now;
         }
 
-        // Update live tickers
         async function updateTicker(symbol, elementId, timestampId) {
             try {
                 const response = await fetch(
@@ -283,7 +278,6 @@
             }
         }
 
-        // Build API URL based on selected endpoint and parameters
         function buildApiUrl() {
             const endpoint = document.getElementById('endpoint-select').value;
             const ticker = document.getElementById('ticker-select').value;
@@ -334,23 +328,19 @@
             return `${url}?${params.toString()}`;
         }
 
-        // Update API URL preview
         function updateApiUrlPreview() {
             const url = buildApiUrl();
             document.getElementById('api-url-preview').textContent = url;
         }
 
-        // Show/hide parameter panels based on endpoint
         function updateParameterVisibility() {
             const endpoint = document.getElementById('endpoint-select').value;
 
-            // Hide all parameter panels
             document.getElementById('timestamp-param').style.display = 'none';
             document.getElementById('date-range-params').style.display = 'none';
             document.getElementById('pagination-params').style.display = 'none';
             document.getElementById('max-diff-param').style.display = 'none';
 
-            // Show relevant panels
             switch (endpoint) {
                 case 'all':
                     document.getElementById('pagination-params').style.display = 'flex';
@@ -373,18 +363,15 @@
             updateApiUrlPreview();
         }
 
-        // Fetch data from API
         async function fetchApiData() {
             const url = buildApiUrl();
             const resultsBody = document.getElementById('results-body');
             const resultMeta = document.getElementById('result-meta');
 
-            // Reset displays
             document.getElementById('table-results').style.display = 'none';
             document.getElementById('stats-results').style.display = 'none';
             document.getElementById('single-result').style.display = 'none';
 
-            // Show loading
             resultsBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">EXECUTING_QUERY...</td></tr>';
             resultMeta.textContent = `STATUS: FETCHING | URL: ${url.split('?')[0]}`;
 
@@ -399,7 +386,6 @@
                 const data = await response.json();
                 resultMeta.textContent = `STATUS: SUCCESS | RECORDS: ${Array.isArray(data) ? data.length : 1}`;
 
-                // Display results based on endpoint type
                 if (endpoint === 'stats') {
                     displayStats(data);
                 } else if (endpoint === 'latest' || endpoint === 'at_timestamp' || endpoint === 'closest') {
@@ -411,11 +397,10 @@
             } catch (err) {
                 console.error('API request failed:', err);
                 resultsBody.innerHTML = `<tr><td colspan="4" style="color: var(--neon-pink); text-align: center; padding: 20px;">ERROR: ${err.message}</td></tr>`;
-                resultMeta.textContent = 'STATUS: FAILED';
+                resultMeta.textContent = `STATUS: FAILED ${err}`;
             }
         }
 
-        // Display table results
         function displayTableResults(data) {
             const tableResults = document.getElementById('table-results');
             const resultsBody = document.getElementById('results-body');
@@ -432,6 +417,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${fmtDate(row.timestamp)}</td>
+                    <td>${row.timestamp}</td>
                     <td style="color: var(--neon-pink)">${row.ticker.toUpperCase()}</td>
                     <td style="color: var(--neon-blue)">${fmtPrice(row.price)}</td>
                     <td style="opacity: 0.7;">#${row.id}</td>
@@ -440,7 +426,6 @@
             });
         }
 
-        // Display statistics
         function displayStats(data) {
             const statsResults = document.getElementById('stats-results');
 
@@ -454,7 +439,6 @@
             document.getElementById('stat-at-timestamp').textContent = fmtPrice(data.price_at_time || data.closest_price);
         }
 
-        // Display single result
         function displaySingleResult(data) {
             const singleResult = document.getElementById('single-result');
 
@@ -466,16 +450,14 @@
             document.getElementById('single-id').textContent = `#${data.id}`;
         }
 
-        // Reset API form
         function resetApiForm() {
             document.getElementById('endpoint-select').value = 'all';
             document.getElementById('ticker-select').value = 'btc_usd';
-            document.getElementById('limit-input').value = '10';
+            document.getElementById('limit-input').value = '9999';
             document.getElementById('offset-input').value = '0';
             document.getElementById('timestamp-input').value = updateCurrentTimestamp();
             document.getElementById('max-diff-input').value = '60';
 
-            // Reset date inputs to today
             const now = new Date();
             const today = now.toISOString().slice(0, 16);
             const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 16);
@@ -485,7 +467,6 @@
             updateParameterVisibility();
         }
 
-        // Copy API URL as cURL command
         function copyApiUrl() {
             const url = buildApiUrl();
             const curlCmd = `curl -X GET "${window.location.origin}${url}"`;
@@ -503,43 +484,34 @@
             });
         }
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            // Set default date values
             const now = new Date();
             const today = now.toISOString().slice(0, 16);
             const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 16);
             document.getElementById('start-date').value = yesterday;
             document.getElementById('end-date').value = today;
 
-            // Update current timestamp
             updateCurrentTimestamp();
 
-            // Update live tickers
             updateTicker('btc_usd', 'btc-price', 'btc-timestamp');
             updateTicker('eth_usd', 'eth-price', 'eth-timestamp');
 
-            // Set up event listeners
             document.getElementById('endpoint-select').addEventListener('change', updateParameterVisibility);
             document.getElementById('ticker-select').addEventListener('change', updateApiUrlPreview);
 
-            // Listen to all parameter inputs
             const paramInputs = document.querySelectorAll('#parameter-panel input, #parameter-panel select');
             paramInputs.forEach(input => {
                 input.addEventListener('input', updateApiUrlPreview);
                 input.addEventListener('change', updateApiUrlPreview);
             });
 
-            // Initial API call for default view
             fetchApiData();
 
-            // Auto-update tickers every 10 seconds
             setInterval(() => {
                 updateTicker('btc_usd', 'btc-price', 'btc-timestamp');
                 updateTicker('eth_usd', 'eth-price', 'eth-timestamp');
             }, 10000);
 
-            // Initial update of parameter visibility
             updateParameterVisibility();
         });
     </script>
