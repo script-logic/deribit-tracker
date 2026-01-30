@@ -33,7 +33,7 @@ Deribit Price Tracker is a high-performance cryptocurrency price monitoring syst
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/deribit-tracker.git
+git clone https://github.com/script-logic/deribit-tracker.git
 cd deribit-tracker
 ```
 
@@ -72,7 +72,7 @@ docker-compose up -d
 ### Setup Development Environment
 ```bash
 # Install dependencies
-poetry install
+poetry install --with dev
 
 # Apply migrations
 poetry run alembic upgrade head
@@ -86,155 +86,57 @@ poetry run pytest
 
 ## Architecture
 ```mermaid
-flowchart TB
+flowchart LR
+    %% --- Стилизация ---
+    classDef db fill:#ffcc80,stroke:#ef6c00,color:black,stroke-width:2px;
+
+    %% --- Узлы ---
     subgraph External
-        DB[(PostgreSQL)]
-        Redis[(Redis)]
-        Deribit[Deribit API]
+        direction TB
+        DB[(PostgreSQL)]:::db
+        Deribit[Deribit API]:::ext
+    end
+
+    subgraph Infrastructure
+        Redis[(Redis)]:::db
     end
 
     subgraph Application
-        API[FastAPI Application]
-        Celery[Celery Workers]
-        Beat[Celery Beat]
+        API[FastAPI App]:::app
 
-        subgraph Services
-            PS[Price Service]
-            Rep[Repository]
-            Client[Deribit Client]
+        subgraph Logic
+            direction TB
+            PS[Price Service]:::app
+            Rep[Repository]:::app
+            Client[Deribit Client]:::app
         end
 
-        subgraph Tasks
-            PC[Price Collection]
-            HC[Health Check]
+        subgraph Workers
+            direction TB
+            Beat[Celery Beat]:::task
+            Celery[Celery Worker]:::task
+            PC[Tasks: Price Collection]:::task
         end
+
+        HC(Health Check):::task
     end
 
-    Client --> Deribit
     API --> PS
     PS --> Rep
-    Rep --> DB
+    Rep ==> DB
 
+    Beat --> Redis
+    Redis --> Celery
     Celery --> PC
     PC --> Client
     PC --> Rep
-    Beat --> Redis
-    Redis --> Celery
 
-    HC --> |Monitor| Client
-    HC --> |Monitor| DB
-    HC --> |Monitor| Redis
+    Client -- HTTP/WS --> Deribit
+
+    HC -.-> |ping| Client
+    HC -.-> |ping| DB
+    HC -.-> |ping| Redis
 ```
-## Components Overview
-
-├── .github/                                                            #
-│   └── workflows/                                                      #
-│       └── ci.yml                                                      #
-├── alembic/                                                            #
-│   ├── versions/                                                       #
-│   │   └── 2026/                                                       #
-│   │       └── 01/                                                     #
-│   │           └── 25_2149_52_19cfef6b2cba_create_price_ticks_table.py #
-│   ├── README                                                          #
-│   ├── env.py                                                          #
-│   └── script.py.mako                                                  #
-├── app/                                                                #
-│   ├── api/                                                            #
-│   │   ├── v1/                                                         #
-│   │   │   ├── endpoints/                                              #
-│   │   │   │   ├── __init__.py                                         #
-│   │   │   │   └── prices.py                                           #
-│   │   │   ├── __init__.py                                             #
-│   │   │   └── schemas.py                                              #
-│   │   ├── __init__.py                                                 #
-│   │   ├── exceptions.py                                               #
-│   │   └── routes.py                                                   #
-│   ├── clients/                                                        #
-│   │   ├── __init__.py                                                 #
-│   │   ├── deribit.py                                                  #
-│   │   └── exceptions.py                                               #
-│   ├── core/                                                           #
-│   │   ├── __init__.py                                                 #
-│   │   ├── config.py                                                   #
-│   │   └── logger.py                                                   #
-│   ├── database/                                                       #
-│   │   ├── __init__.py                                                 #
-│   │   ├── base.py                                                     #
-│   │   ├── manager.py                                                  #
-│   │   ├── models.py                                                   #
-│   │   └── repository.py                                               #
-│   ├── dependencies/                                                   #
-│   │   ├── __init__.py                                                 #
-│   │   ├── clients.py                                                  #
-│   │   ├── database.py                                                 #
-│   │   └── services.py                                                 #
-│   ├── frontend/                                                       #
-│   │   ├── static/                                                     #
-│   │   │   └── css/                                                    #
-│   │   │       └── style.css                                           #
-│   │   ├── templates/                                                  #
-│   │   │   └── index.html                                              #
-│   │   ├── __init__.py                                                 #
-│   │   └── routes.py                                                   #
-│   ├── services/                                                       #
-│   │   ├── __init__.py                                                 #
-│   │   └── price_service.py                                            #
-│   ├── tasks/                                                          #
-│   │   ├── __init__.py                                                 #
-│   │   ├── celery_application.py                                       #
-│   │   ├── dependencies.py                                             #
-│   │   └── price_collection.py                                         #
-│   ├── __init__.py                                                     #
-│   └── main.py                                                         #
-├── tests/                                                              #
-│   ├── test_api/                                                       #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_endpoints.py                                           #
-│   ├── test_clients/                                                   #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_deribit.py                                             #
-│   ├── test_database/                                                  #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_repository.py                                          #
-│   ├── test_services/                                                  #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_price_service.py                                       #
-│   ├── test_tasks/                                                     #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_celery.py                                              #
-│   ├── __init__.py                                                     #
-│   └── conftest.py                                                     #
-├── .bandit.yml                                                         #
-├── .dockerignore                                                       #
-├── .env.example                                                        #
-├── .gitignore                                                          #
-├── .gitlab-ci.yml                                                      #
-├── .pre-commit-config.yaml                                             #
-├── .secrets.baseline                                                   #
-├── Dockerfile                                                          #
-├── LICENSE                                                             #
-├── README.md                                                           #
-├── alembic.ini                                                         #
-├── docker-compose.yml                                                  #
-├── poetry.lock                                                         #
-├── pyproject.toml                                                      #
-└── test.db                                                             #
-
-### Core Components
-- **FastAPI Application**: Main web server handling HTTP requests
-- **Celery Workers**: Distributed task processing
-- **PostgreSQL**: Primary data storage
-- **Redis**: Message broker and task results backend
-
-### Service Layer
-- **Price Service**: Business logic implementation
-- **Repository**: Data access abstraction
-- **Deribit Client**: External API integration
-
-### Task Processing
-- **Price Collection**: Scheduled price fetching
-- **Health Check**: System monitoring
-- **Celery Beat**: Task scheduling
 
 ## Design Decisions
 
@@ -269,7 +171,6 @@ flowchart TB
 ### Testing
 - **Comprehensive test suite**:
   - Unit tests with pytest
-  - Integration tests
   - Async test support
   - Mock frameworks for external services
   - CI/CD pipeline with GitHub Actions
@@ -278,7 +179,6 @@ flowchart TB
 - **Logging and metrics**:
   - Structured logging
   - Health check endpoints
-  - Performance monitoring
   - Error tracking
 
 ## License
@@ -310,7 +210,7 @@ Deribit Price Tracker - это высокопроизводительная си
 
 1. Клонируйте репозиторий:
 ```bash
-git clone https://github.com/yourusername/deribit-tracker.git
+git clone https://github.com/script-logic/deribit-tracker.git
 cd deribit-tracker
 ```
 
@@ -349,7 +249,7 @@ docker-compose up -d
 ### Настройка окружения разработки
 ```bash
 # Установка зависимостей
-poetry install
+poetry install --with dev
 
 # Применение миграций
 poetry run alembic upgrade head
@@ -363,156 +263,57 @@ poetry run pytest
 
 ## Архитектура
 ```mermaid
-flowchart TB
-    subgraph Внешние сервисы
-        DB[(PostgreSQL)]
-        Redis[(Redis)]
-        Deribit[Deribit API]
+flowchart LR
+    %% --- Стилизация ---
+    classDef db fill:#ffcc80,stroke:#ef6c00,color:black,stroke-width:2px;
+
+    %% --- Узлы ---
+    subgraph External
+        direction TB
+        DB[(PostgreSQL)]:::db
+        Deribit[Deribit API]:::ext
     end
 
-    subgraph Приложение
-        API[FastAPI Приложение]
-        Celery[Celery Воркеры]
-        Beat[Celery Beat]
-
-        subgraph Сервисы
-            PS[Сервис цен]
-            Rep[Репозиторий]
-            Client[Клиент Deribit]
-        end
-
-        subgraph Задачи
-            PC[Сбор цен]
-            HC[Проверка здоровья]
-        end
+    subgraph Infrastructure
+        Redis[(Redis)]:::db
     end
 
-    Client --> Deribit
+    subgraph Application
+        API[FastAPI App]:::app
+
+        subgraph Logic
+            direction TB
+            PS[Price Service]:::app
+            Rep[Repository]:::app
+            Client[Deribit Client]:::app
+        end
+
+        subgraph Workers
+            direction TB
+            Beat[Celery Beat]:::task
+            Celery[Celery Worker]:::task
+            PC[Tasks: Price Collection]:::task
+        end
+
+        HC(Health Check):::task
+    end
+
     API --> PS
     PS --> Rep
-    Rep --> DB
+    Rep ==> DB
 
+    Beat --> Redis
+    Redis --> Celery
     Celery --> PC
     PC --> Client
     PC --> Rep
-    Beat --> Redis
-    Redis --> Celery
 
-    HC --> |Мониторинг| Client
-    HC --> |Мониторинг| DB
-    HC --> |Мониторинг| Redis
+    Client -- HTTP/WS --> Deribit
+
+    HC -.-> |ping| Client
+    HC -.-> |ping| DB
+    HC -.-> |ping| Redis
 ```
-
-## Обзор компонентов
-
-├── .github/                                                            #
-│   └── workflows/                                                      #
-│       └── ci.yml                                                      #
-├── alembic/                                                            #
-│   ├── versions/                                                       #
-│   │   └── 2026/                                                       #
-│   │       └── 01/                                                     #
-│   │           └── 25_2149_52_19cfef6b2cba_create_price_ticks_table.py #
-│   ├── README                                                          #
-│   ├── env.py                                                          #
-│   └── script.py.mako                                                  #
-├── app/                                                                #
-│   ├── api/                                                            #
-│   │   ├── v1/                                                         #
-│   │   │   ├── endpoints/                                              #
-│   │   │   │   ├── __init__.py                                         #
-│   │   │   │   └── prices.py                                           #
-│   │   │   ├── __init__.py                                             #
-│   │   │   └── schemas.py                                              #
-│   │   ├── __init__.py                                                 #
-│   │   ├── exceptions.py                                               #
-│   │   └── routes.py                                                   #
-│   ├── clients/                                                        #
-│   │   ├── __init__.py                                                 #
-│   │   ├── deribit.py                                                  #
-│   │   └── exceptions.py                                               #
-│   ├── core/                                                           #
-│   │   ├── __init__.py                                                 #
-│   │   ├── config.py                                                   #
-│   │   └── logger.py                                                   #
-│   ├── database/                                                       #
-│   │   ├── __init__.py                                                 #
-│   │   ├── base.py                                                     #
-│   │   ├── manager.py                                                  #
-│   │   ├── models.py                                                   #
-│   │   └── repository.py                                               #
-│   ├── dependencies/                                                   #
-│   │   ├── __init__.py                                                 #
-│   │   ├── clients.py                                                  #
-│   │   ├── database.py                                                 #
-│   │   └── services.py                                                 #
-│   ├── frontend/                                                       #
-│   │   ├── static/                                                     #
-│   │   │   └── css/                                                    #
-│   │   │       └── style.css                                           #
-│   │   ├── templates/                                                  #
-│   │   │   └── index.html                                              #
-│   │   ├── __init__.py                                                 #
-│   │   └── routes.py                                                   #
-│   ├── services/                                                       #
-│   │   ├── __init__.py                                                 #
-│   │   └── price_service.py                                            #
-│   ├── tasks/                                                          #
-│   │   ├── __init__.py                                                 #
-│   │   ├── celery_application.py                                       #
-│   │   ├── dependencies.py                                             #
-│   │   └── price_collection.py                                         #
-│   ├── __init__.py                                                     #
-│   └── main.py                                                         #
-├── tests/                                                              #
-│   ├── test_api/                                                       #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_endpoints.py                                           #
-│   ├── test_clients/                                                   #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_deribit.py                                             #
-│   ├── test_database/                                                  #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_repository.py                                          #
-│   ├── test_services/                                                  #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_price_service.py                                       #
-│   ├── test_tasks/                                                     #
-│   │   ├── __init__.py                                                 #
-│   │   └── test_celery.py                                              #
-│   ├── __init__.py                                                     #
-│   └── conftest.py                                                     #
-├── .bandit.yml                                                         #
-├── .dockerignore                                                       #
-├── .env.example                                                        #
-├── .gitignore                                                          #
-├── .gitlab-ci.yml                                                      #
-├── .pre-commit-config.yaml                                             #
-├── .secrets.baseline                                                   #
-├── Dockerfile                                                          #
-├── LICENSE                                                             #
-├── README.md                                                           #
-├── alembic.ini                                                         #
-├── docker-compose.yml                                                  #
-├── poetry.lock                                                         #
-├── pyproject.toml                                                      #
-└── test.db                                                             #
-
-### Основные компоненты
-- **FastAPI Приложение**: Основной веб-сервер для обработки HTTP-запросов
-- **Celery Воркеры**: Распределенная обработка задач
-- **PostgreSQL**: Основное хранилище данных
-- **Redis**: Брокер сообщений и хранилище результатов задач
-
-### Сервисный слой
-- **Сервис цен**: Реализация бизнес-логики
-- **Репозиторий**: Абстракция доступа к данным
-- **Клиент Deribit**: Интеграция с внешним API
-
-### Обработка задач
-- **Сбор цен**: Планируемый сбор цен
-- **Проверка здоровья**: Мониторинг системы
-- **Celery Beat**: Планировщик задач
 
 ## Архитектурные решения
 
@@ -547,7 +348,6 @@ flowchart TB
 ### Тестирование
 - **Комплексный набор тестов**:
   - Модульные тесты с pytest
-  - Интеграционные тесты
   - Поддержка асинхронного тестирования
   - Фреймворки для мокирования внешних сервисов
   - CI/CD pipeline с GitHub Actions
@@ -555,14 +355,11 @@ flowchart TB
 ### Мониторинг
 - **Логирование и метрики**:
   - Структурированное логирование
-  - Endpoint'ы проверки здоровья
-  - Мониторинг производительности
+  - Health check
   - Отслеживание ошибок
 
 ## Лицензия
 
 Этот проект лицензирован под MIT License - см. файл [LICENSE](LICENSE) для подробностей.
-
-</div>
 
 </div>
