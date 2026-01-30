@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }} // DASHBOARD</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>{{ project_name }}</h1>
+                <div class="system-info">
+                    SYS.VER: {{ version }} // CONNECTED
+                </div>
+            </div>
+        </header>
+
+        <!-- Live Tickers -->
+        <main class="dashboard">
+            <div class="card">
+                <h2>>> BTC_USD</h2>
+                <div class="price-display" id="btc-price">LOADING...</div>
+                <div class="ticker-label">INDEX_PRICE // LIVE</div>
+                <div class="timestamp" id="btc-timestamp">--:--:--</div>
+            </div>
+
+            <div class="card">
+                <h2>>> ETH_USD</h2>
+                <div class="price-display" id="eth-price">LOADING...</div>
+                <div class="ticker-label">INDEX_PRICE // LIVE</div>
+                <div class="timestamp" id="eth-timestamp">--:--:--</div>
+            </div>
+        </main>
+
+        <!-- API Interface Panel -->
+        <section class="api-panel">
+            <h2 style="color: var(--neon-blue); margin-bottom: 20px;">
+                >> API_INTERFACE
+            </h2>
+
+            <div class="api-controls">
+                <!-- Endpoint Selection -->
+                <div class="endpoint-selector">
+                    <label for="endpoint-select">SELECT_ENDPOINT:</label>
+                    <select id="endpoint-select">
+                        <option value="all">GET_ALL_PRICES</option>
+                        <option value="latest">GET_LATEST_PRICE</option>
+                        <option value="at_timestamp">GET_PRICE_AT_TIMESTAMP</option>
+                        <option value="closest">GET_CLOSEST_PRICE</option>
+                        <option value="by_date">GET_PRICES_BY_DATE</option>
+                        <option value="stats">GET_STATISTICS</option>
+                    </select>
+                </div>
+
+                <!-- Dynamic Parameters -->
+                <div class="parameter-panel" id="parameter-panel">
+                    <!-- Base parameters -->
+                    <div class="param-row">
+                        <label for="ticker-select">TICKER:</label>
+                        <select id="ticker-select">
+                            <option value="btc_usd">BTC_USD</option>
+                            <option value="eth_usd">ETH_USD</option>
+                        </select>
+                    </div>
+
+                    <!-- Timestamp parameter (for at_timestamp and closest) -->
+                    <div class="param-row" id="timestamp-param" style="display: none;">
+                        <label for="timestamp-input">TIMESTAMP (UNIX):</label>
+                        <input type="number" id="timestamp-input" placeholder="e.g., 1704067200">
+                        <div class="param-hint">Current: <span id="current-timestamp">1704067200</span></div>
+                    </div>
+
+                    <!-- Date range parameters -->
+                    <div class="param-row" id="date-range-params" style="display: none;">
+                        <div class="date-inputs">
+                            <div>
+                                <label for="start-date">START_DATE:</label>
+                                <input type="datetime-local" id="start-date">
+                            </div>
+                            <div>
+                                <label for="end-date">END_DATE:</label>
+                                <input type="datetime-local" id="end-date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pagination parameters -->
+                    <div class="param-row" id="pagination-params" style="display: none;">
+                        <div class="pagination-inputs">
+                            <div>
+                                <label for="limit-input">LIMIT:</label>
+                                <input type="number" id="limit-input" value="10" min="1" max="1000">
+                            </div>
+                            <div>
+                                <label for="offset-input">OFFSET:</label>
+                                <input type="number" id="offset-input" value="0" min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Max difference parameter -->
+                    <div class="param-row" id="max-diff-param" style="display: none;">
+                        <label for="max-diff-input">MAX_DIFF_SECONDS:</label>
+                        <input type="number" id="max-diff-input" value="60" min="1" max="3600">
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button onclick="fetchApiData()" class="btn-primary">EXECUTE_QUERY</button>
+                    <button onclick="resetApiForm()" class="btn-secondary">RESET_FORM</button>
+                    <button onclick="copyApiUrl()" class="btn-tertiary">COPY_CURL</button>
+                </div>
+
+                <!-- API URL Preview -->
+                <div class="url-preview">
+                    <label>REQUEST_URL:</label>
+                    <div class="url-display" id="api-url-preview">/api/v1/prices/?ticker=btc_usd&limit=10</div>
+                </div>
+            </div>
+
+            <!-- Results Display -->
+            <div class="results-container">
+                <div class="results-header">
+                    <h3 style="color: var(--neon-pink);">QUERY_RESULTS</h3>
+                    <div class="result-meta" id="result-meta">
+                        STATUS: PENDING
+                    </div>
+                </div>
+
+                <!-- Table Results -->
+                <div class="table-container" id="table-results">
+                    <table>
+                        <thead id="results-head">
+                            <tr>
+                                <th>TIMESTAMP (UTC)</th>
+                                <th>TIMESTAMP (UNIX)</th>
+                                <th>TICKER</th>
+                                <th>PRICE (USD)</th>
+                                <th>RECORD_ID</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body">
+                            <!-- JS renders rows here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Stats Results -->
+                <div class="stats-container" id="stats-results" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">LATEST_PRICE</div>
+                            <div class="stat-value" id="stat-latest-price">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">MIN_PRICE</div>
+                            <div class="stat-value" id="stat-min-price">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">MAX_PRICE</div>
+                            <div class="stat-value" id="stat-max-price">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">AVG_PRICE</div>
+                            <div class="stat-value" id="stat-avg-price">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">TOTAL_RECORDS</div>
+                            <div class="stat-value" id="stat-count">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">AT_TIMESTAMP</div>
+                            <div class="stat-value" id="stat-at-timestamp">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Single Result -->
+                <div class="single-result" id="single-result" style="display: none;">
+                    <div class="single-result-card">
+                        <h4>SINGLE_PRICE_RECORD</h4>
+                        <div class="single-result-grid">
+                            <div>
+                                <span class="single-label">TICKER:</span>
+                                <span id="single-ticker">--</span>
+                            </div>
+                            <div>
+                                <span class="single-label">PRICE:</span>
+                                <span id="single-price">--</span>
+                            </div>
+                            <div>
+                                <span class="single-label">TIMESTAMP:</span>
+                                <span id="single-timestamp">--</span>
+                            </div>
+                            <div>
+                                <span class="single-label">RECORD_ID:</span>
+                                <span id="single-id">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const API_PREFIX = "{{ api_v1_prefix }}";
+
+        const fmtPrice = (price) => {
+            if (price === null || price === undefined) return 'N/A';
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(price);
+        };
+
+        const fmtDate = (ts) => {
+            if (!ts) return '--:--:--';
+            return new Date(ts * 1000).toLocaleString('en-GB', {
+                timeZone: 'UTC',
+                year: '2-digit',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }).replace(',', ' //');
+        };
+
+        const fmtDateTime = (dt) => {
+            if (!dt) return '';
+            const date = new Date(dt);
+            return date.toISOString().slice(0, 16);
+        };
+
+        function updateCurrentTimestamp() {
+            const now = Math.floor(Date.now() / 1000);
+            document.getElementById('current-timestamp').textContent = now;
+            document.getElementById('timestamp-input').value = now;
+            return now;
+        }
+
+        async function updateTicker(symbol, elementId, timestampId) {
+            try {
+                const response = await fetch(
+                    `${API_PREFIX}/prices/latest?ticker=${symbol}`
+                );
+                if (!response.ok) throw new Error("Network error");
+                const data = await response.json();
+
+                const priceEl = document.getElementById(elementId);
+                const tsEl = document.getElementById(timestampId);
+
+                priceEl.innerText = fmtPrice(data.price);
+                tsEl.innerText = fmtDate(data.timestamp);
+
+                priceEl.style.textShadow = "0 0 20px var(--neon-blue)";
+                setTimeout(() => {
+                    priceEl.style.textShadow = "0 0 10px rgba(255,255,255,0.3)";
+                }, 200);
+
+            } catch (err) {
+                console.error(`Failed to fetch ${symbol}`, err);
+                document.getElementById(elementId).innerText = "ERROR";
+                document.getElementById(timestampId).innerText = "--:--:--";
+            }
+        }
+
+        function buildApiUrl() {
+            const endpoint = document.getElementById('endpoint-select').value;
+            const ticker = document.getElementById('ticker-select').value;
+
+            let url = `${API_PREFIX}/prices/`;
+            const params = new URLSearchParams();
+
+            params.append('ticker', ticker);
+
+            switch (endpoint) {
+                case 'all':
+                    url = `${API_PREFIX}/prices/`;
+                    params.append('limit', document.getElementById('limit-input').value);
+                    params.append('offset', document.getElementById('offset-input').value);
+                    break;
+                case 'latest':
+                    url = `${API_PREFIX}/prices/latest`;
+                    break;
+                case 'at_timestamp':
+                    url = `${API_PREFIX}/prices/at-timestamp`;
+                    params.append('timestamp', document.getElementById('timestamp-input').value);
+                    break;
+                case 'closest':
+                    url = `${API_PREFIX}/prices/closest-to-timestamp`;
+                    params.append('timestamp', document.getElementById('timestamp-input').value);
+                    params.append('maxDifference', document.getElementById('max-diff-input').value);
+                    break;
+                case 'by_date':
+                    url = `${API_PREFIX}/prices/by-date`;
+                    const startDate = document.getElementById('start-date').value;
+                    const endDate = document.getElementById('end-date').value;
+                    if (startDate) {
+                        params.append('start_date', new Date(startDate).toISOString());
+                    }
+                    if (endDate) {
+                        params.append('end_date', new Date(endDate).toISOString());
+                    }
+                    break;
+                case 'stats':
+                    url = `${API_PREFIX}/prices/stats`;
+                    const timestamp = document.getElementById('timestamp-input').value;
+                    if (timestamp && endpoint === 'stats') {
+                        params.append('timestamp', timestamp);
+                    }
+                    break;
+            }
+
+            return `${url}?${params.toString()}`;
+        }
+
+        function updateApiUrlPreview() {
+            const url = buildApiUrl();
+            document.getElementById('api-url-preview').textContent = url;
+        }
+
+        function updateParameterVisibility() {
+            const endpoint = document.getElementById('endpoint-select').value;
+
+            document.getElementById('timestamp-param').style.display = 'none';
+            document.getElementById('date-range-params').style.display = 'none';
+            document.getElementById('pagination-params').style.display = 'none';
+            document.getElementById('max-diff-param').style.display = 'none';
+
+            switch (endpoint) {
+                case 'all':
+                    document.getElementById('pagination-params').style.display = 'flex';
+                    break;
+                case 'at_timestamp':
+                case 'closest':
+                    document.getElementById('timestamp-param').style.display = 'flex';
+                    if (endpoint === 'closest') {
+                        document.getElementById('max-diff-param').style.display = 'flex';
+                    }
+                    break;
+                case 'by_date':
+                    document.getElementById('date-range-params').style.display = 'flex';
+                    break;
+                case 'stats':
+                    document.getElementById('timestamp-param').style.display = 'flex';
+                    break;
+            }
+
+            updateApiUrlPreview();
+        }
+
+        async function fetchApiData() {
+            const url = buildApiUrl();
+            const resultsBody = document.getElementById('results-body');
+            const resultMeta = document.getElementById('result-meta');
+
+            document.getElementById('table-results').style.display = 'none';
+            document.getElementById('stats-results').style.display = 'none';
+            document.getElementById('single-result').style.display = 'none';
+
+            resultsBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">EXECUTING_QUERY...</td></tr>';
+            resultMeta.textContent = `STATUS: FETCHING | URL: ${url.split('?')[0]}`;
+
+            try {
+                const response = await fetch(url);
+                const endpoint = document.getElementById('endpoint-select').value;
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                resultMeta.textContent = `STATUS: SUCCESS | RECORDS: ${Array.isArray(data) ? data.length : 1}`;
+
+                if (endpoint === 'stats') {
+                    displayStats(data);
+                } else if (endpoint === 'latest' || endpoint === 'at_timestamp' || endpoint === 'closest') {
+                    displaySingleResult(data);
+                } else {
+                    displayTableResults(data);
+                }
+
+            } catch (err) {
+                console.error('API request failed:', err);
+                resultsBody.innerHTML = `<tr><td colspan="4" style="color: var(--neon-pink); text-align: center; padding: 20px;">ERROR: ${err.message}</td></tr>`;
+                resultMeta.textContent = `STATUS: FAILED ${err}`;
+            }
+        }
+
+        function displayTableResults(data) {
+            const tableResults = document.getElementById('table-results');
+            const resultsBody = document.getElementById('results-body');
+
+            tableResults.style.display = 'block';
+            resultsBody.innerHTML = '';
+
+            if (!Array.isArray(data) || data.length === 0) {
+                resultsBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px;">NO_DATA_FOUND</td></tr>';
+                return;
+            }
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${fmtDate(row.timestamp)}</td>
+                    <td>${row.timestamp}</td>
+                    <td style="color: var(--neon-pink)">${row.ticker.toUpperCase()}</td>
+                    <td style="color: var(--neon-blue)">${fmtPrice(row.price)}</td>
+                    <td style="opacity: 0.7;">#${row.id}</td>
+                `;
+                resultsBody.appendChild(tr);
+            });
+        }
+
+        function displayStats(data) {
+            const statsResults = document.getElementById('stats-results');
+
+            statsResults.style.display = 'block';
+
+            document.getElementById('stat-latest-price').textContent = fmtPrice(data.latest_price);
+            document.getElementById('stat-min-price').textContent = fmtPrice(data.min_price);
+            document.getElementById('stat-max-price').textContent = fmtPrice(data.max_price);
+            document.getElementById('stat-avg-price').textContent = fmtPrice(data.avg_price);
+            document.getElementById('stat-count').textContent = data.count;
+            document.getElementById('stat-at-timestamp').textContent = fmtPrice(data.price_at_time || data.closest_price);
+        }
+
+        function displaySingleResult(data) {
+            const singleResult = document.getElementById('single-result');
+
+            singleResult.style.display = 'block';
+
+            document.getElementById('single-ticker').textContent = data.ticker.toUpperCase();
+            document.getElementById('single-price').textContent = fmtPrice(data.price);
+            document.getElementById('single-timestamp').textContent = fmtDate(data.timestamp);
+            document.getElementById('single-id').textContent = `#${data.id}`;
+        }
+
+        function resetApiForm() {
+            document.getElementById('endpoint-select').value = 'all';
+            document.getElementById('ticker-select').value = 'btc_usd';
+            document.getElementById('limit-input').value = '9999';
+            document.getElementById('offset-input').value = '0';
+            document.getElementById('timestamp-input').value = updateCurrentTimestamp();
+            document.getElementById('max-diff-input').value = '60';
+
+            const now = new Date();
+            const today = now.toISOString().slice(0, 16);
+            const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 16);
+            document.getElementById('start-date').value = yesterday;
+            document.getElementById('end-date').value = today;
+
+            updateParameterVisibility();
+        }
+
+        function copyApiUrl() {
+            const url = buildApiUrl();
+            const curlCmd = `curl -X GET "${window.location.origin}${url}"`;
+
+            navigator.clipboard.writeText(curlCmd).then(() => {
+                const preview = document.getElementById('api-url-preview');
+                const originalText = preview.textContent;
+                preview.textContent = 'cURL command copied to clipboard!';
+                preview.style.color = 'var(--neon-blue)';
+
+                setTimeout(() => {
+                    preview.textContent = originalText;
+                    preview.style.color = '';
+                }, 2000);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const today = now.toISOString().slice(0, 16);
+            const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 16);
+            document.getElementById('start-date').value = yesterday;
+            document.getElementById('end-date').value = today;
+
+            updateCurrentTimestamp();
+
+            updateTicker('btc_usd', 'btc-price', 'btc-timestamp');
+            updateTicker('eth_usd', 'eth-price', 'eth-timestamp');
+
+            document.getElementById('endpoint-select').addEventListener('change', updateParameterVisibility);
+            document.getElementById('ticker-select').addEventListener('change', updateApiUrlPreview);
+
+            const paramInputs = document.querySelectorAll('#parameter-panel input, #parameter-panel select');
+            paramInputs.forEach(input => {
+                input.addEventListener('input', updateApiUrlPreview);
+                input.addEventListener('change', updateApiUrlPreview);
+            });
+
+            fetchApiData();
+
+            setInterval(() => {
+                updateTicker('btc_usd', 'btc-price', 'btc-timestamp');
+                updateTicker('eth_usd', 'eth-price', 'eth-timestamp');
+            }, 10000);
+
+            updateParameterVisibility();
+        });
+    </script>
+</body>
+
+</html>

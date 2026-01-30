@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core import get_logger, settings
+from app.core import get_logger, get_settings
 
 from .base import Base
 
@@ -27,6 +27,7 @@ class DatabaseManager:
     def __init__(self) -> None:
         self._engine: AsyncEngine | None = None
         self._session_factory: async_sessionmaker[AsyncSession] | None = None
+        self.settings = get_settings()
 
     def _get_engine(self) -> AsyncEngine:
         """
@@ -40,8 +41,8 @@ class DatabaseManager:
         """
         if self._engine is None:
             self._engine = create_async_engine(
-                settings.database.async_dsn,
-                echo=settings.application.debug,
+                self.settings.database.async_dsn,
+                echo=self.settings.application.debug,
                 pool_pre_ping=True,
                 pool_recycle=300,
                 pool_size=20,
@@ -97,6 +98,23 @@ class DatabaseManager:
         finally:
             await session.close()
 
+    async def get_session_generator(
+        self,
+    ) -> AsyncGenerator[AsyncSession, None]:
+        """
+        Async generator for FastAPI dependency injection.
+        """
+        session = self._get_session_factory()()
+
+        try:
+            yield session
+            await session.commit()
+        except Exception as error:
+            await session.rollback()
+            raise error
+        finally:
+            await session.close()
+
     async def dispose(self) -> None:
         """Close all database connections."""
         if self._engine is not None:
@@ -112,8 +130,3 @@ class DatabaseManager:
             True if engine and session factory are initialized.
         """
         return self._engine is not None and self._session_factory is not None
-
-
-database_manager = DatabaseManager()
-database_manager._get_engine()
-database_manager._get_session_factory()

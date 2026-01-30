@@ -18,6 +18,7 @@ celerybeat-schedule
 .cache/
 start_dev.ps1
 scripts
+test.db
 
 # coverage
 .coverage

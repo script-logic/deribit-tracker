@@ -12,11 +12,12 @@ from alembic import context  # type: ignore
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.core import settings
+from app.core import get_settings
 from app.database import Base
-from app.database.models import PriceTick  # noqa
+from app.database.models import PriceTick  # type: ignore  # noqa: F401
 
 config = context.config
+settings = get_settings()
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

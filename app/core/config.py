@@ -5,8 +5,12 @@ Uses Pydantic for type-safe configuration with support for nested models,
 environment variable loading, and singleton pattern for global access.
 """
 
+import logging
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, ClassVar
 
+import toml
 from pydantic import BaseModel, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -91,6 +95,17 @@ class DeribitAPISettings(BaseModel):
 
 
 class RedisSettings(BaseModel):
+    """
+    Redis connection configuration settings.
+
+    Attributes:
+        host: Redis server hostname or IP address.
+        port: Redis server port number (1-65535).
+        db: Redis database index (0-15).
+        password: Optional password for Redis authentication.
+        ssl: Whether to use SSL/TLS for the connection.
+    """
+
     host: str = "localhost"
     port: int = Field(default=6379, ge=1, le=65535)
     db: int = Field(default=0, ge=0, le=15)
@@ -118,7 +133,7 @@ class CelerySettings(BaseModel):
         task_track_started: Track when task starts execution.
     """
 
-    worker_concurrency: int = Field(default=2, ge=1, le=10)
+    worker_concurrency: int = Field(default=1, ge=1, le=10)
     beat_enabled: bool = True
     task_track_started: bool = True
 
@@ -127,21 +142,48 @@ class CelerySettings(BaseModel):
 
 class ApplicationSettings(BaseModel):
     """
-    Core application configuration.
+    Core application configuration model that handles application settings
+    and automatically populates metadata from pyproject.toml when not provided.
 
     Attributes:
         debug: Enable debug mode for detailed logging and diagnostics.
         api_v1_prefix: URL prefix for API version 1 endpoints.
         project_name: Display name of the application.
         version: Application version string.
+        description: Detailed description of the application.
+        openapi_json: Filename for OpenAPI JSON specification.
+        docs_url: URL path for Swagger UI documentation.
+        redoc_url: URL path for ReDoc documentation.
     """
 
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
-    project_name: str = "Deribit Price Tracker API"
-    version: str = "0.3.0"
+    project_name: str = ""
+    version: str = ""
+    description: str = ""
+    openapi_json: str = "openapi.json"
+    docs_url: str = "/docs"
+    redoc_url: str = "/redoc"
 
     model_config = {"frozen": True}
+
+    def __init__(self, **data: dict[str, Any]):
+        super().__init__(**data)
+
+        metadata = self._get_metadata()
+
+        if not self.project_name:
+            object.__setattr__(
+                self, "project_name", metadata.get("title", "Unknown")
+            )
+        if not self.version:
+            object.__setattr__(
+                self, "version", metadata.get("version", "Unknown")
+            )
+        if not self.description:
+            object.__setattr__(
+                self, "description", metadata.get("description", "")
+            )
 
     @field_validator("api_v1_prefix")
     @classmethod
@@ -169,6 +211,46 @@ class ApplicationSettings(BaseModel):
 
         return v
 
+    @property
+    def metadata(self) -> dict[str, str]:
+        return self._get_metadata()
+
+    def _get_metadata(self) -> dict[str, str]:
+        """
+        Retrieves application metadata from the installed package information.
+
+        Returns:
+            dict:
+                version (str): Current application version (e.g., "0.4.0")
+                description (str): Brief application description
+                title (str): Formatted title (e.g., "Deribit Tracker")
+        """
+        pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+
+        try:
+            data = toml.load(pyproject_path)
+
+            project_section = data.get("project", {})
+
+            return {
+                "version": project_section.get("version", "Unknown"),
+                "description": project_section.get("description", ""),
+                "title": project_section
+                .get("name", "Unknown")
+                .replace("-", " ")
+                .title(),
+            }
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                "Could not read pyproject.toml: %s", e
+            )
+
+        return {
+            "title": "Unknown",
+            "version": "Unknown",
+            "description": "",
+        }
+
 
 class CORSSettings(BaseModel):
     """
@@ -182,6 +264,15 @@ class CORSSettings(BaseModel):
         "http://localhost:8000",
         "http://127.0.0.1:8000",
     ]
+    allow_credentials: bool = True
+    allow_methods: list[str] = ["GET", "OPTIONS"]
+    allow_headers: list[str] = [
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ]
 
     model_config = {"frozen": True}
 
@@ -193,9 +284,6 @@ class Settings(BaseSettings):
     Consolidates all configuration sections and loads values from
     environment variables or .env file. Uses Pydantic for validation
     and type safety with nested models.
-
-    Environment variables follow the pattern: SECTION__FIELD_NAME
-    Example: DATABASE__HOST, DERIBIT_API__CLIENT_ID
     """
 
     _instance: ClassVar["Settings | None"] = None
@@ -236,23 +324,23 @@ class Settings(BaseSettings):
 
     def _log_initialization(self) -> None:
         """Log settings initialization (excluding sensitive data)."""
-        self._logger = get_logger(__name__)
+        logger = get_logger(__name__)
 
         if self.application.debug:
             AppLogger.set_level("DEBUG")
-            self._logger.debug("Debug logging enabled")
+            logger.debug("Debug logging enabled")
 
-        self._logger.debug("Debug mode: %s", self.application.debug)
-        self._logger.info("Application settings initialized")
+        logger.debug("Debug mode: %s", self.application.debug)
+        logger.info("Application settings initialized")
 
-        self._logger.debug(
+        logger.debug(
             "Database configured: %s:%s/%s",
             self.database.host,
             self.database.port,
             self.database.db,
         )
 
-        self._logger.debug(
+        logger.debug(
             "Redis configured: %s:%s (db: %s)",
             self.redis.host,
             self.redis.port,
@@ -260,22 +348,20 @@ class Settings(BaseSettings):
         )
 
         if self.deribit_api.is_configured:
-            self._logger.info("Deribit API credentials configured")
+            logger.info("Deribit API credentials configured")
         else:
-            self._logger.warning(
+            logger.info(
                 "Deribit API credentials not configured - "
                 "only public endpoints available"
             )
 
 
-def get_settings(**kwargs) -> Settings:
+@lru_cache
+def get_settings() -> Settings:
     """
     Get singleton settings instance.
 
     Returns:
         Global Settings instance.
     """
-    if Settings._instance is None:
-        return Settings.init_instance(**kwargs)
-
-    return Settings._instance
+    return Settings.init_instance()

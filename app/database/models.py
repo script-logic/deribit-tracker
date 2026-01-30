@@ -3,7 +3,7 @@ Database models for storing cryptocurrency price data.
 """
 
 from datetime import UTC, datetime
-from typing import Self
+from typing import Any, Self
 
 from sqlalchemy import BigInteger, DateTime, Float, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -77,7 +77,7 @@ class PriceTick(Base):
             timestamp=timestamp,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert PriceTick to dictionary.
 

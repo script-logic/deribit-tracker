@@ -71,7 +71,7 @@ services:
       DATABASE__DB: ${DATABASE__DB:-deribit_tracker}
       REDIS__HOST: redis
       REDIS__PORT: 6379
-      CELERY__WORKER_CONCURRENCY: ${CELERY__WORKER_CONCURRENCY:-2}
+      CELERY__WORKER_CONCURRENCY: ${CELERY__WORKER_CONCURRENCY:-1}
       CELERY__BEAT_ENABLED: ${CELERY__BEAT_ENABLED:-false}
       CELERY__TASK_TRACK_STARTED: ${CELERY__TASK_TRACK_STARTED:-true}
     depends_on:
@@ -84,9 +84,9 @@ services:
     command: >
       poetry run celery -A app.tasks.celery_app worker
       --loglevel=info
-      --concurrency=${CELERY__WORKER_CONCURRENCY:-2}
+      --concurrency=${CELERY__WORKER_CONCURRENCY:-1}
       --pool=solo
-      --queues=price_collection,celery,default
+      --queues=price_collection
     env_file:
     - .env
 
@@ -113,7 +113,6 @@ services:
       poetry run celery -A app.tasks.celery_app beat
       --loglevel=info
       --scheduler=celery.beat:PersistentScheduler
-
     env_file:
       - .env
 

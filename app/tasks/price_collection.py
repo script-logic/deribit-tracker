@@ -1,20 +1,19 @@
 """
 Celery tasks for periodic price collection from Deribit.
-
-Tasks run in background using asyncio pool for efficient
-async execution.
 """
 
 import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from app.clients import DeribitClient
-from app.core import get_logger
-from app.database.manager import database_manager
+from celery import Task
+from redis.asyncio.client import Redis
+
+from app.core import get_logger, get_settings
 from app.database.repository import PriceRepository
 
 from . import celery_app
+from .dependencies import get_database_manager_tasks, get_deribit_client_tasks
 
 logger = get_logger(__name__)
 
@@ -31,7 +30,8 @@ async def collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
     """
     from datetime import UTC, datetime
 
-    deribit_client = DeribitClient()
+    deribit_client = get_deribit_client_tasks()
+    database_manager = get_database_manager_tasks()
     timestamp = int(datetime.now(UTC).timestamp())
 
     try:
@@ -58,7 +58,7 @@ async def collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
             }
 
     except Exception as error:
-        logger.error("Failed to collect %s price: %s", ticker, str(error))
+        logger.error("Failed to collect %s price: %s", ticker, error)
         return {
             "ticker": ticker,
             "error": str(error),
@@ -75,7 +75,7 @@ async def collect_price_for_ticker(ticker: str) -> dict[str, Any] | None:
     acks_late=True,
     ignore_result=False,
 )
-def collect_all_prices(self):
+def collect_all_prices(self: Task) -> dict[str, Any]:  # type: ignore
     """
     Celery task to collect prices for all supported tickers.
 
@@ -93,19 +93,19 @@ def collect_all_prices(self):
         asyncio.set_event_loop(loop)
 
     tickers = ["btc_usd", "eth_usd"]
-    tasks = []
+    tasks: list[tuple[str, Any]] = []
 
     for ticker in tickers:
         task = loop.create_task(collect_price_for_ticker(ticker))
         tasks.append((ticker, task))
 
-    results = []
+    results: list[dict[str, Any]] = []
     for ticker, task in tasks:
         try:
-            result = loop.run_until_complete(task)
-            results.append(result)
+            task_result = loop.run_until_complete(task)
+            results.append(task_result)
         except Exception as error:
-            logger.error("Failed to collect %s price: %s", ticker, str(error))
+            logger.error("Failed to collect %s price: %s", ticker, error)
             results.append(
                 {"ticker": ticker, "error": str(error), "success": False},
             )
@@ -113,16 +113,21 @@ def collect_all_prices(self):
     successful = [r for r in results if r and r.get("success")]
     failed = [r for r in results if r and not r.get("success")]
 
-    if failed and self.request.retries < self.max_retries:
+    if (
+        failed
+        and self.max_retries is not None
+        and self.request.retries < self.max_retries
+    ):
         logger.warning("Some collections failed, retrying...")
         raise self.retry(countdown=30)
 
-    return {
+    result: dict[str, Any] = {
         "successful": len(successful),
         "failed": len(failed),
         "results": results,
         "timestamp": int(datetime.now(UTC).timestamp()),
     }
+    return result
 
 
 @celery_app.task(
@@ -151,9 +156,7 @@ async def collect_single_price(ticker: str) -> dict[str, Any] | None:
         return result
 
     except Exception as error:
-        logger.error("Failed to collect %s price: %s", ticker, str(error))
-
-        from datetime import UTC, datetime
+        logger.error("Failed to collect %s price: %s", ticker, error)
 
         return {
             "ticker": ticker,
@@ -167,53 +170,59 @@ async def collect_single_price(ticker: str) -> dict[str, Any] | None:
     name="app.tasks.price_collection.health_check",
     ignore_result=False,
 )
-async def health_check() -> dict[str, Any]:
+def health_check() -> dict[str, Any]:
     """
-    Async health check task for price collection system.
+    Synchronous health check task for price collection system.
+    """
 
-    Returns:
-        Dictionary with system health status.
-    """
-    from datetime import UTC, datetime
+    async def _run_health_check() -> dict[str, Any]:
+        try:
+            deribit_client = get_deribit_client_tasks()
+            database_manager = get_database_manager_tasks()
+            api_healthy = await deribit_client.health_check()
+            db_healthy = database_manager.is_initialized()
+            settings = get_settings()
+
+            redis_healthy = False
+            try:
+                redis_client = Redis.from_url(
+                    settings.redis.url,
+                    decode_responses=True,
+                )
+                await redis_client.ping()
+                redis_healthy = True
+                await redis_client.close()
+            except Exception as e:
+                logger.warning("Redis health check failed: %s", e)
+
+            overall_healthy = all([api_healthy, db_healthy, redis_healthy])
+
+            return {
+                "status": "healthy" if overall_healthy else "unhealthy",
+                "components": {
+                    "deribit_api": (
+                        "available" if api_healthy else "unavailable"
+                    ),
+                    "database": (
+                        "initialized" if db_healthy else "not_initialized"
+                    ),
+                    "redis": "available" if redis_healthy else "unavailable",
+                },
+                "timestamp": int(datetime.now(UTC).timestamp()),
+            }
+
+        except Exception as error:
+            logger.error("Health check failed: %s", error)
+            return {
+                "status": "unhealthy",
+                "error": str(error),
+                "timestamp": int(datetime.now(UTC).timestamp()),
+            }
 
     try:
-        deribit_client = DeribitClient()
-        api_healthy = await deribit_client.health_check()
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
-        db_healthy = database_manager.is_initialized()
-
-        import redis.asyncio as redis
-
-        from app.core import settings
-
-        redis_healthy = False
-        try:
-            redis_client = redis.from_url(
-                settings.redis.url,
-                decode_responses=True,
-            )
-            await redis_client.ping()
-            redis_healthy = True
-            await redis_client.close()
-        except Exception as e:
-            logger.warning("Redis health check failed: %s", e)
-
-        overall_healthy = all([api_healthy, db_healthy, redis_healthy])
-
-        return {
-            "status": "healthy" if overall_healthy else "unhealthy",
-            "components": {
-                "deribit_api": "available" if api_healthy else "unavailable",
-                "database": "initialized" if db_healthy else "not_initialized",
-                "redis": "available" if redis_healthy else "unavailable",
-            },
-            "timestamp": int(datetime.now(UTC).timestamp()),
-        }
-
-    except Exception as error:
-        logger.error("Health check failed: %s", str(error))
-        return {
-            "status": "unhealthy",
-            "error": str(error),
-            "timestamp": int(datetime.now(UTC).timestamp()),
-        }
+    return loop.run_until_complete(_run_health_check())
