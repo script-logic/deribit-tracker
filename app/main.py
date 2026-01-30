@@ -19,6 +19,10 @@ def create_app() -> FastAPI:
         settings = get_settings()
         app_config = settings.application
         cors_config = settings.cors
+        openapi_url = "/".join([
+            app_config.api_v1_prefix,
+            app_config.openapi_json,
+        ])
 
         app = FastAPI(
             title=app_config.project_name,
@@ -27,9 +31,7 @@ def create_app() -> FastAPI:
             docs_url=app_config.docs_url,
             redoc_url=app_config.redoc_url,
             debug=app_config.debug,
-            openapi_url=(
-                f"{app_config.api_v1_prefix}/{app_config.openapi_json}"
-            ),
+            openapi_url=openapi_url,
         )
 
         register_exception_handlers(app)
@@ -42,17 +44,18 @@ def create_app() -> FastAPI:
             allow_headers=cors_config.allow_headers,
         )
 
+        app.include_router(frontend_router)
+        app.include_router(health_check_router)
         app.include_router(
             api_v1_router,
             prefix=app_config.api_v1_prefix,
         )
+
         app.mount(
             "/static",
             StaticFiles(directory="app/frontend/static"),
             name="static",
         )
-        app.include_router(frontend_router)
-        app.include_router(health_check_router)
 
         logger.info(
             "FastAPI application successfully initialized: %s",

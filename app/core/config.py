@@ -95,6 +95,17 @@ class DeribitAPISettings(BaseModel):
 
 
 class RedisSettings(BaseModel):
+    """
+    Redis connection configuration settings.
+
+    Attributes:
+        host: Redis server hostname or IP address.
+        port: Redis server port number (1-65535).
+        db: Redis database index (0-15).
+        password: Optional password for Redis authentication.
+        ssl: Whether to use SSL/TLS for the connection.
+    """
+
     host: str = "localhost"
     port: int = Field(default=6379, ge=1, le=65535)
     db: int = Field(default=0, ge=0, le=15)
@@ -122,7 +133,7 @@ class CelerySettings(BaseModel):
         task_track_started: Track when task starts execution.
     """
 
-    worker_concurrency: int = Field(default=2, ge=1, le=10)
+    worker_concurrency: int = Field(default=1, ge=1, le=10)
     beat_enabled: bool = True
     task_track_started: bool = True
 
@@ -131,13 +142,18 @@ class CelerySettings(BaseModel):
 
 class ApplicationSettings(BaseModel):
     """
-    Core application configuration.
+    Core application configuration model that handles application settings
+    and automatically populates metadata from pyproject.toml when not provided.
 
     Attributes:
         debug: Enable debug mode for detailed logging and diagnostics.
         api_v1_prefix: URL prefix for API version 1 endpoints.
         project_name: Display name of the application.
         version: Application version string.
+        description: Detailed description of the application.
+        openapi_json: Filename for OpenAPI JSON specification.
+        docs_url: URL path for Swagger UI documentation.
+        redoc_url: URL path for ReDoc documentation.
     """
 
     debug: bool = False
@@ -250,7 +266,13 @@ class CORSSettings(BaseModel):
     ]
     allow_credentials: bool = True
     allow_methods: list[str] = ["GET", "OPTIONS"]
-    allow_headers: list[str] = ["*"]
+    allow_headers: list[str] = [
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ]
 
     model_config = {"frozen": True}
 
@@ -328,7 +350,7 @@ class Settings(BaseSettings):
         if self.deribit_api.is_configured:
             logger.info("Deribit API credentials configured")
         else:
-            logger.warning(
+            logger.info(
                 "Deribit API credentials not configured - "
                 "only public endpoints available"
             )
